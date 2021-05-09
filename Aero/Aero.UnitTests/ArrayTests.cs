@@ -1,0 +1,180 @@
+﻿using System;
+using Aero.Gen.Attributes;
+using NUnit.Framework;
+
+namespace Aero.UnitTests
+{
+    [AeroBlock]
+    public struct ArrayBlockItem
+    {
+        public uint  A;
+        public float B;
+    }
+
+    [Aero]
+    public partial class IntArrayFixedTest
+    {
+        [AeroArray(4)]
+        public int[] ArrayTest;
+    }
+
+    [Aero]
+    public partial class IntArrayRefLenTest
+    {
+        public int IntArrayRefLen;
+        [AeroArray(nameof(IntArrayRefLen))]
+        public int[] ArrayTest;
+    }
+    
+    [Aero]
+    public partial class IntArrayTypeLenTest
+    {
+        [AeroArray(typeof(int))]
+        public int[] ArrayTest;
+    }
+    
+    [Aero]
+    public partial class ByteArrayFixedTest
+    {
+        [AeroArray(10)]
+        public byte[] ArrayTest;
+    }
+    
+    [Aero]
+    public partial class ArrayBlockItemArrayFixedTest
+    {
+        [AeroArray(2)]
+        public ArrayBlockItem[] ArrayTest;
+    }
+
+    public class ArrayTests
+    {
+        [SetUp]
+        public void Setup()
+        {
+        }
+
+        private static byte[] IntArrayFixedTestBytes = new byte[] { 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00};
+
+        [Test]
+        public void IntArrayFixedTester()
+        {
+            var testObject = new IntArrayFixedTest();
+            if (testObject.Unpack(IntArrayFixedTestBytes.AsSpan()) > -1) {
+                if (testObject.ArrayTest.Length != 4) {
+                    Assert.Fail("Didn't read all the items in the array");
+                }
+
+                if (testObject.ArrayTest[0] == 1 &&
+                    testObject.ArrayTest[1] == 2 &&
+                    testObject.ArrayTest[2] == 3 &&
+                    testObject.ArrayTest[3] == 4) {
+                    Assert.Pass("Array read and values matched");
+                }
+                
+                Assert.Fail("Array values didn't match");
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
+        }
+        
+        private static byte[] IntArrayVarestBytes = new byte[] { 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00};
+        [Test]
+        public void IntArrayRefTester()
+        {
+            var testObject = new IntArrayRefLenTest();
+            if (testObject.Unpack(IntArrayVarestBytes.AsSpan()) > -1) {
+                if (testObject.ArrayTest.Length != 4) {
+                    Assert.Fail("Didn't read all the items in the array");
+                }
+
+                if (testObject.ArrayTest[0] == 1 &&
+                    testObject.ArrayTest[1] == 2 &&
+                    testObject.ArrayTest[2] == 3 &&
+                    testObject.ArrayTest[3] == 4) {
+                    Assert.Pass("Array read and values matched");
+                }
+                
+                Assert.Fail("Array values didn't match");
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
+        }
+        
+        [Test]
+        public void IntArrayTypeTester()
+        {
+            var testObject = new IntArrayTypeLenTest();
+            if (testObject.Unpack(IntArrayVarestBytes.AsSpan()) > -1) {
+                if (testObject.ArrayTest.Length != 4) {
+                    Assert.Fail("Didn't read all the items in the array");
+                }
+
+                if (testObject.ArrayTest[0] == 1 &&
+                    testObject.ArrayTest[1] == 2 &&
+                    testObject.ArrayTest[2] == 3 &&
+                    testObject.ArrayTest[3] == 4) {
+                    Assert.Pass("Array read and values matched");
+                }
+                
+                Assert.Fail("Array values didn't match");
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
+        }
+        
+        private static byte[] ByteArrayFixedTestBytes = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 ,9 };
+
+        
+        [Test]
+        public void ByteArrayFixedTest()
+        {
+            var testObject = new ByteArrayFixedTest();
+            if (testObject.Unpack(ByteArrayFixedTestBytes.AsSpan()) > -1) {
+                if (testObject.ArrayTest.Length != 10) {
+                    Assert.Fail("Didn't read all the items in the array");
+                }
+
+                for (int i = 0; i < 9; i++) {
+                    if (testObject.ArrayTest[i] != i) {
+                        Assert.Fail("Array values didn't match");
+                    }
+                }
+                
+                Assert.Pass("Array read and values matched");
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
+        }
+
+        private static byte[] ArrayBlockItemArrayFixedBytes = new byte[] { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x28, 0x41,
+                                                                           0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xA4, 0x41 };
+
+        [Test]
+        public void ArrayBlockItemArrayFixedTester()
+        {
+            var testObject = new ArrayBlockItemArrayFixedTest();
+            if (testObject.Unpack(ArrayBlockItemArrayFixedBytes.AsSpan()) > -1) {
+                if (testObject.ArrayTest.Length != 2) {
+                    Assert.Fail("Didn't read all the items in the array");
+                }
+
+                if (testObject.ArrayTest[0].A == 1 &&
+                    testObject.ArrayTest[0].B == 10.5f &&
+                    testObject.ArrayTest[1].A == 2 &&
+                    testObject.ArrayTest[1].B == 20.5f) {
+                    Assert.Pass("Array read and values matched");
+                }
+                
+                Assert.Fail("Array values didn't match");
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
+        }
+    }
+}

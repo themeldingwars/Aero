@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aero.Gen", "Aero.Gen\Aero.Gen.csproj", "{7604CB6A-8465-47EC-B1CF-FA246595DB08}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aero.TestCases", "Aero.TestCases\Aero.TestCases.csproj", "{FA9F0826-7D66-4180-A06C-D74EE116E688}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aero.UnitTests", "Aero.UnitTests\Aero.UnitTests.csproj", "{0BEF2748-DF32-42F0-91EC-ED1B1CA49A67}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7604CB6A-8465-47EC-B1CF-FA246595DB08}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7604CB6A-8465-47EC-B1CF-FA246595DB08}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7604CB6A-8465-47EC-B1CF-FA246595DB08}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7604CB6A-8465-47EC-B1CF-FA246595DB08}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA9F0826-7D66-4180-A06C-D74EE116E688}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA9F0826-7D66-4180-A06C-D74EE116E688}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA9F0826-7D66-4180-A06C-D74EE116E688}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA9F0826-7D66-4180-A06C-D74EE116E688}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0BEF2748-DF32-42F0-91EC-ED1B1CA49A67}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0BEF2748-DF32-42F0-91EC-ED1B1CA49A67}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0BEF2748-DF32-42F0-91EC-ED1B1CA49A67}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0BEF2748-DF32-42F0-91EC-ED1B1CA49A67}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
