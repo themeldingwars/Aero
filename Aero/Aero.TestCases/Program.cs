@@ -102,9 +102,9 @@ public class Test2
             var test = new TestCase1Main();
             test.Unpack(data);
 
-            foreach (var log in test.DiagLogs) {
+            /*foreach (var log in test.DiagLogs) {
                 Console.WriteLine(log);
-            }
+            }*/
 
         }
         
