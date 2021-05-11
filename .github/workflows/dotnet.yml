@@ -2,7 +2,8 @@ name: .NET
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - '*'
   pull_request:
     branches: [ main ]
 
@@ -25,4 +26,42 @@ jobs:
     - name: Build
       run: dotnet build --no-restore -c Release
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test --no-build --verbosity normal -c Release
+    - name: Run benchmarks
+      run: cd Aero.UnitTests && dotnet run -c Release
+    - id: get-comment-body
+      run: |
+        body=$(cat Aero.UnitTests/BenchmarkDotNet.Artifacts/results/Aero.UnitTests.Benchmarks.Reading-report-github.md)
+        body="${body//'%'/'%25'}"
+        body="${body//$'\n'/'%0A'}"
+        body="${body//$'\r'/'%0D'}" 
+        echo ::set-output name=body::$body
+    - name: Commit Comment
+      uses: peter-evans/commit-comment@v1.3.2
+      with:
+          body: |
+            Benchmark result (use as a guide):
+            ${{ steps.get-comment-body.outputs.body }}
+            
+    - name: Download previous benchmark data
+      uses: actions/cache@v1
+      with:
+        path: ./cache
+        key: ${{ runner.os }}-benchmark
+    - name: Store benchmark result
+      uses: Happypig375/github-action-benchmark@v1.8.2
+      if: github.event_name != 'pull_request'
+      with:
+        name: Benchmark.Net Benchmark
+        tool: 'benchmarkdotnet'
+        gh-pages-branch: benchmarkResults
+        benchmark-data-dir-path: benchmarks
+        output-file-path: Aero/Aero.UnitTests/BenchmarkDotNet.Artifacts/results/Aero.UnitTests.Benchmarks.Reading-report-full-compressed.json
+        external-data-json-path: ./cache/benchmark-data.json
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        auto-push: false
+        skip-fetch-gh-pages: true
+        comment-always: false
+        # Show alert with commit comment on detecting possible performance regression
+        alert-threshold: '150%'
+        fail-on-alert: true

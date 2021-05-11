@@ -1,7 +1,9 @@
 ﻿using System;
 using Aero.Gen.Attributes;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
+using BenchmarkDotNet.Toolchains.InProcess.Emit;
 
 namespace Aero.UnitTests.Benchmarks
 {
@@ -15,7 +17,7 @@ namespace Aero.UnitTests.Benchmarks
     }
 
     //[SimpleJob(RuntimeMoniker.NetCoreApp30)]
-    [SimpleJob(RuntimeMoniker.CoreRt50, launchCount: 1, warmupCount: 5, targetCount: 10)]
+    [SimpleJob(RuntimeMoniker.NetCoreApp50, launchCount: 1, warmupCount: 5, targetCount: 10)]
     [MemoryDiagnoser]
     [JsonExporterAttribute.Full]
     [JsonExporterAttribute.FullCompressed]
