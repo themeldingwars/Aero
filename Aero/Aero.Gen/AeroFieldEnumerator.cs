@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -22,6 +23,9 @@ namespace Aero.Gen
         public string                  IfStatment = null;
         public string                  TypeStr    = null;
         public AeroArrayInfo           ArrayInfo;
+        public bool                    IsFlags;
+        public bool                    IsEnum;
+        public string                  EnumType;
 
         public IEnumerable<AeroFieldInfo> GetSubFieldsForArrayBlock(AeroSyntaxReceiver SyntaxReceiver, string namePrefix)
         {
@@ -80,7 +84,9 @@ namespace Aero.Gen
 
             foreach (var fd in Cd.DescendantNodes().OfType<FieldDeclarationSyntax>()) {
                 var testFields = GetFields(fd, null, SyntaxReceiver);
-                fields.AddRange(testFields);
+                if (testFields != null) {
+                    fields.AddRange(testFields);
+                }
             }
 
             foreach (var field in fields) {
@@ -90,8 +96,11 @@ namespace Aero.Gen
 
         public static IEnumerable<AeroFieldInfo> GetFields(FieldDeclarationSyntax field, AeroFieldInfo parentInfo, AeroSyntaxReceiver SyntaxReceiver)
         {
-            List<AeroFieldInfo> fields    = new List<AeroFieldInfo>();
-            var                 fieldName = AgUtils.GetFieldName(field);
+            List<AeroFieldInfo> fields     = new List<AeroFieldInfo>();
+            var                 fieldName  = AgUtils.GetFieldName(field);
+            var                 sModel     = SyntaxReceiver.Context.Compilation.GetSemanticModel(field.SyntaxTree);
+            var                 typeInfo   = sModel.GetTypeInfo(field.Declaration.Type).Type;
+
             var fieldInfo = new AeroFieldInfo
             {
                 //TopLevelClass   = Cd,
@@ -102,11 +111,14 @@ namespace Aero.Gen
                 FieldName       = parentInfo != null ? $"{parentInfo.FieldName}.{fieldName}" : fieldName,
                 IsArray         = AgUtils.GetFieldTypeStr(field)?.EndsWith("[]") ?? false,
                 TypeStr         = AgUtils.GetFieldTypeStr(field)?.TrimEnd('[', ']'),
-                IfStatment      = null
+                IfStatment      = null,
+                IsFlags         = typeInfo?.GetAttributes().OfType<FlagsAttribute>() != null,
+                IsEnum          = typeInfo?.TypeKind                                 == TypeKind.Enum,
+                EnumType        = typeInfo is INamedTypeSymbol ns ? ns.EnumUnderlyingType?.Name.ToLower() ?? "" : ""
             };
 
             // Get if statements
-            var ifAttrs = AgUtils.GetAeroIfAttributes(field);
+            var ifAttrs = AgUtils.GetAeroIfAttributes(field, sModel);
             if (ifAttrs.Count > 0) {
                 fieldInfo.IfStatment = string.Join(" && ", ifAttrs.Select(x => x.GetIfStr()));
             }
@@ -114,12 +126,32 @@ namespace Aero.Gen
             // Array attributes
             if (fieldInfo.IsArray) {
                 var arrayAttrData = AgUtils.GetArrayInfo(field);
+
+                if (!arrayAttrData.IsArray) {
+                    SyntaxReceiver.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.NoArrayAttributeError, field.GetLocation(), fieldName));
+                    return null;
+                }
+
+                fieldInfo.IsArray   = arrayAttrData.IsArray;
                 fieldInfo.ArrayInfo = arrayAttrData;
+            }
+            
+            if (typeInfo.TypeKind == TypeKind.Class) {
+                SyntaxReceiver.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.ClassNotAllowedInAeroError, field.GetLocation(), fieldName, typeInfo.Name));
+                return null;
             }
 
             var fieldType = fieldInfo.IsArray ? fieldInfo.TypeStr : field.Declaration.Type.ToString();
             var aeroBlock = SyntaxReceiver.GetAeroBLockOfName(null, fieldType);
             fieldInfo.IsBlock = aeroBlock != null;
+            
+            // Check if the struct is marked and check arrays too
+            if ((typeInfo.TypeKind == TypeKind.Struct && typeInfo.SpecialType     == SpecialType.None && !fieldInfo.IsBlock) ||
+                (typeInfo is IArrayTypeSymbol ats     && ats.ElementType.TypeKind == TypeKind.Struct  && ats.ElementType.SpecialType == SpecialType.None && !fieldInfo.IsBlock)) {
+                SyntaxReceiver.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.StructNotMarkedAsAeroBlockError, field.GetLocation(), fieldName, typeInfo.Name));
+                return null;
+            }
+            
             if (aeroBlock != null && !fieldInfo.IsArray) {
                 fields.Add(fieldInfo);
 

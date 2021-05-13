@@ -10,7 +10,9 @@ namespace Aero.Gen.Attributes
         public enum Ops
         {
             Equal,
-            NotEqual
+            NotEqual,
+            HasFlag,
+            DoesntHaveFlag
         }
 
         public AeroIfAttribute(string key, int value, Ops op = Ops.Equal)
@@ -24,6 +26,11 @@ namespace Aero.Gen.Attributes
         }
         
         public AeroIfAttribute(string key, Ops  op, params object[] values)
+        {
+            
+        }
+        
+        public AeroIfAttribute(string key, object value, Ops op = Ops.Equal)
         {
             
         }

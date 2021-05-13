@@ -6,26 +6,32 @@ using Aero.Gen.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Aero.Gen.Attributes.AeroIfAttribute;
 
 namespace Aero.Gen
 {
     public struct AeroIfInfo
     {
-        public string              Key;
-        public AeroIfAttribute.Ops Op;
-        public string[]            Values;
+        public string   Key;
+        public Ops      Op;
+        public string[] Values;
 
         public string GetIfStr()
         {
+            bool isFlagsCheck = Op is Ops.HasFlag or Ops.DoesntHaveFlag;
             var opStr = Op switch
             {
-                AeroIfAttribute.Ops.Equal    => "==",
-                AeroIfAttribute.Ops.NotEqual => "!=",
-                _                            => ""
+                Ops.Equal          => "==",
+                Ops.NotEqual       => "!=",
+                Ops.HasFlag        => "&",
+                Ops.DoesntHaveFlag => "&",
+                _                  => ""
             };
 
+            var op    = Op;
             var key   = Key;
-            var inner = Values.Select(x => $"{key} {opStr} {x}");
+            //var inner = Values.Select(x => isFlagsCheck ? $"({key} {opStr} {x}) {(op == Ops.HasFlag ? "!=" : "==")} 0" : $"{key} {opStr} {x}");
+            var inner = Values.Select(x => isFlagsCheck ? $"({key} {opStr} {x}) {(op == Ops.HasFlag ? "!=" : "==")} 0" : $"{key} {opStr} {x}");
             return $"({string.Join(" || ", inner)})";
         }
     }
@@ -87,9 +93,9 @@ namespace Aero.Gen
 
         // Get a node with the given name
         public static T NodeWithName<T>(SyntaxNode root, string name) where T : SyntaxNode =>
-            root.DescendantNodes().First(x => x is T node &&
-                                              node.DescendantNodes().OfType<IdentifierNameSyntax>()
-                                                  .First().Identifier.Text == name) as T;
+            root.DescendantNodes().FirstOrDefault(x => x is T node &&
+                                                       node.DescendantNodes().OfType<IdentifierNameSyntax>()
+                                                           .First().Identifier.Text == name) as T;
 
         // Get nodes with the given name
         public static IEnumerable<T> NodesWithName<T>(SyntaxNode root, string name) where T : SyntaxNode =>
@@ -111,24 +117,25 @@ namespace Aero.Gen
             return expression.ToString().Trim('"');
         }
 
-        public static List<AeroIfInfo> GetAeroIfAttributes(FieldDeclarationSyntax fd)
+        public static List<AeroIfInfo> GetAeroIfAttributes(FieldDeclarationSyntax fd, SemanticModel semanticModel)
         {
             var ifInfos = new List<AeroIfInfo>();
 
-            var ifAttrs = NodesWithName<AttributeSyntax>(fd, AeroIfAttribute.Name);
+            var ifAttrs = NodesWithName<AttributeSyntax>(fd, Name);
             foreach (var attr in ifAttrs) {
                 if (attr.ArgumentList?.Arguments.Count >= 2) {
-                    var                 keyData   = attr.ArgumentList.Arguments[0].Expression;
-                    AeroIfAttribute.Ops op        = AeroIfAttribute.Ops.Equal;
-                    var                 ifStrings = new List<string>();
+                    var keyData   = attr.ArgumentList.Arguments[0].Expression;
+                    Ops op        = Ops.Equal;
+                    var ifStrings = new List<string>();
 
                     foreach (var arg in attr.ArgumentList.Arguments.Skip(1)) {
-                        var argStr = arg.Expression.ToString();
+                        var argStr  = arg.Expression.ToString();
+                        var argType = semanticModel.GetTypeInfo(arg);
 
                         // Op
-                        if (argStr.StartsWith("AeroIfAttribute.Ops")) {
-                            var opStr = argStr.Replace("AeroIfAttribute.Ops.", "");
-                            if (Enum.TryParse<AeroIfAttribute.Ops>(opStr, out AeroIfAttribute.Ops parsedOp)) {
+                        if (argStr.StartsWith("AeroIfAttribute.Ops") || argStr.StartsWith("Ops")) {
+                            var opStr = argStr.Replace("AeroIfAttribute.Ops.", "").Replace("Ops.", "");
+                            if (Enum.TryParse<Ops>(opStr, out Ops parsedOp)) {
                                 op = parsedOp;
                             }
                         }
@@ -157,9 +164,9 @@ namespace Aero.Gen
             {
                 IsArray = true
             };
-            
+
             var arrayAttr = NodeWithName<AttributeSyntax>(fd, AeroArrayAttribute.Name);
-            if (arrayAttr == null) return new AeroArrayInfo { IsArray = false };
+            if (arrayAttr == null) return new AeroArrayInfo {IsArray = false};
 
             var numArgs = arrayAttr.ArgumentList?.Arguments.Count ?? 0;
             if (numArgs == 1) {

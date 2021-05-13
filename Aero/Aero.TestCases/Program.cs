@@ -19,6 +19,16 @@ using Aero.Gen.Attributes;
 
 namespace Aero.TestCases
 {
+
+    [Flags]
+    public enum TestFlags : byte
+    {
+        Flag1,
+        Flag2,
+        Flag3,
+        Flag4
+    }
+
     [AeroBlock]
     public struct TestSubDataOne
     {
@@ -47,8 +57,12 @@ public class Test2
     public partial class TestCase1
     {
         
+        public TestSubDataTwo IntArray4;
+
         [AeroArray(typeof(int))]
         public TestSubDataTwo[] IntArray4;
+
+        public TestFlags Flags;
 
         public byte   Byte;
         public char   Char;
@@ -72,8 +86,8 @@ public class Test2
         [AeroArray(2)]
         public int[] IntArray2;
 
-        [AeroArray(typeof(int))]
-        public int[] IntArray3;
+        //[AeroArray(typeof(int))]
+        //public int[] IntArray3;
 
         public TestSubDataOne SubDataOne;
         public TestSubDataTwo SubData2;
@@ -96,7 +110,7 @@ public class Test2
                 Console.WriteLine(diag);
             }
 
-            var data = new byte[] { 0x01, 0x41, 0x9C, 0xFF, 0xFF, 0xFF, 0x64, 0x00, 0x00, 0x00, 0xCE, 0xFF, 0x32, 0x00, 0xC0, 0xBD,
+            var data = new byte[] { 0x02, 0x01, 0x41, 0x9C, 0xFF, 0xFF, 0xFF, 0x64, 0x00, 0x00, 0x00, 0xCE, 0xFF, 0x32, 0x00, 0xC0, 0xBD,
                 0xF0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x9A, 0x99,
                 0x99, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x40 }.AsSpan();
             var test = new TestCase1Main();

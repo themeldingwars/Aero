@@ -176,8 +176,9 @@ namespace Aero.Gen
 
             if (!fieldInfo.IsArray && !fieldInfo.IsBlock) {
                 AddLine($"// Read {fieldInfo.FieldName}, type: {fieldInfo.TypeStr}");
-                using (AddBoundsCheck(fieldInfo.FieldName, fieldInfo.TypeStr)) {
-                    CreateReadType(fieldInfo.FieldName, fieldInfo.TypeStr);
+                var typeStr = fieldInfo.IsEnum ? fieldInfo.EnumType : fieldInfo.TypeStr;
+                using (AddBoundsCheck(fieldInfo.FieldName, typeStr)) {
+                    CreateReadType(fieldInfo.FieldName, typeStr, fieldInfo.IsEnum ? fieldInfo.TypeStr : null);
                 }
             }
             else if (fieldInfo.IsArray) {
@@ -237,41 +238,42 @@ namespace Aero.Gen
             }
         }
 
-        public virtual void CreateReadType(string name, string typeStr)
+        public virtual void CreateReadType(string name, string typeStr, string castType = null)
         {
-            bool wasHandled = true;
+            bool   wasHandled = true;
+            string typeCast   = castType != null ? $"({castType})" : "";
 
             switch (typeStr) {
                 case "byte":
-                    AddLine($"{name} = data[offset];");
+                    AddLine($"{name} = {typeCast}data[offset];");
                     break;
                 case "char":
-                    AddLine($"{name} = (char)data[offset];");
+                    AddLine($"{name} = ({typeCast}(char)data[offset]);");
                     typeStr = "byte";
                     break;
                 case "int":
-                    AddLine($"{name} = BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "uint":
-                    AddLine($"{name} = BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "short":
-                    AddLine($"{name} = BinaryPrimitives.ReadInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "ushort":
-                    AddLine($"{name} = BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "double":
-                    AddLine($"{name} = BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "float":
-                    AddLine($"{name} = BinaryPrimitives.ReadSingleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadSingleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "ulong":
-                    AddLine($"{name} = BinaryPrimitives.ReadUInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadUInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "long":
-                    AddLine($"{name} = BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
 
                 default:

@@ -2,9 +2,20 @@
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using Aero.Gen.Attributes;
+using static Aero.Gen.Attributes.AeroIfAttribute;
 
 namespace Aero.TestCases
 {
+    [Flags]
+    public enum TestFlags : byte
+    {
+        Flag1,
+        Flag2,
+        Flag3,
+        Flag4
+    }
+    
+
     [AeroBlock]
     public struct TestSubDataOne
     {
@@ -38,12 +49,15 @@ namespace Aero.TestCases
         [AeroIf("Byte", 0)]
         public double Double2;*/
         
+        public TestFlags Bytea;
+        
         public byte Byte;
         
         [AeroIf("Byte", 0)]
         [AeroArray(typeof(int))]
         public int[] TestArr;
 
+        [AeroIf("Bytea", Ops.HasFlag, TestFlags.Flag2, TestFlags.Flag3)]
         [AeroArray(2)]
         public int[] TestArr2;
         
@@ -53,7 +67,7 @@ namespace Aero.TestCases
         [AeroArray(2)]
         public TestSubDataOne[] TestArr4;
 
-        [AeroIf("Byte", AeroIfAttribute.Ops.Equal, 0.5f, 1.0f)]
+        //[AeroIf("Byte", AeroIfAttribute.Ops.Equal, 0.5f, 1.0f)]
         public TestSubDataOne TestSubData;
         public TestSubDataTwo TestSubData2;
 
@@ -71,6 +85,15 @@ namespace Aero.TestCases
 
             TestSubData.Byte          = 0;
             TestSubData2.SubData.Byte = 0;
+
+            TestFlags flagsTest = TestFlags.Flag2;
+            if ((flagsTest & TestFlags.Flag2) == 0) {
+                
+            }
+
+            if ((flagsTest & TestFlags.Flag2) != 0) {
+
+            }
         }
     }
 }

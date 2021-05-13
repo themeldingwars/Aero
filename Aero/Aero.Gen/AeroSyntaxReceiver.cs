@@ -8,6 +8,7 @@ namespace Aero.Gen
 {
     public class AeroSyntaxReceiver : ISyntaxReceiver
     {
+        public GeneratorExecutionContext    Context;
         public List<ClassDeclarationSyntax> ClassesToAugment { get; private set; } = new();
         
         public List<ClassDeclarationSyntax> AeroClasses { get; private set; } = new();
