@@ -54,6 +54,7 @@ namespace Aero.TestCases
         public byte Byte;
         
         [AeroIf("Byte", 0)]
+        [AeroIf("Byte", 1)]
         [AeroArray(typeof(int))]
         public int[] TestArr;
 
