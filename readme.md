@@ -46,8 +46,59 @@ public int TestInt;
 
 and creates code equivalent to:
 ```csharp
-    if ((Byte == 0) && (Byte == 1))
-    {
+if ((Byte == 0) && (Byte == 1))
+{
+
+}
+```
+
+The ops options are:
+* Equal
+* NotEqual
+* HasFlag
+* DoesntHaveFlag
+
+# Examples
+## Example 1
+A basic example for all that is needed to have basic value types serialised
+
+```csharp
+[Aero]
+public partial class SimpleTypes
+{
+    public byte   Byte;
+    public char   Char;
+    public int    IntTest;
+    public uint   UintTest;
+    public short  ShortTest;
+    public ushort UshortTest;
+    public long   Long;
+    public ulong  ULong;
+    public float  Float;
+    public double Double;
+}
+```
+
+## Example 2
+A basic example with arrays and some logic
+
+```csharp
+[Aero]
+public partial class SimpleTypes
+{
+    public byte   Byte;
+    public char   Char;
     
-    }
+    // Read 4 ints
+    [AeroArray(4)]
+    public int[] FourInts;
+    
+    // Read an int and uses it to get the length of the array and then reads them
+    [AeroArray(typeof(int))]
+    public int[] VarableIntArray;
+    
+    // If the Byte value is 1 then the value is read, other wise it isn't
+    [AeroIf(nameof(Byte), 1)]
+    public int ShouldBeReadIfByteIs1;
+}
 ```
