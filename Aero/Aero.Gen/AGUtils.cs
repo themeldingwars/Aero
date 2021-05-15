@@ -42,7 +42,8 @@ namespace Aero.Gen
         {
             RefField,
             LengthType,
-            FixedSize
+            FixedSize,
+            NullTerminated
         }
 
         public Mode   ArrayMode;
@@ -187,6 +188,44 @@ namespace Aero.Gen
                     data.ArrayMode = AeroArrayInfo.Mode.LengthType;
                     data.KeyType   = pdt.ToString();
                 }
+            }
+
+            return data;
+        }
+        
+        public static AeroArrayInfo GetStringInfo(FieldDeclarationSyntax fd)
+        {
+            var data = new AeroArrayInfo
+            {
+                IsArray = true
+            };
+
+            var arrayAttr = NodeWithName<AttributeSyntax>(fd, AeroStringAttribute.Name);
+            if (arrayAttr == null) return new AeroArrayInfo {IsArray = false};
+
+            var numArgs = arrayAttr.ArgumentList?.Arguments.Count ?? 0;
+            if (numArgs == 1) {
+                var args = arrayAttr.ArgumentList.Arguments.ToArray();
+                data.IsArray = true;
+
+                if (args[0].Expression is InvocationExpressionSyntax ies && ies.ArgumentList.Arguments.Single().Expression is IdentifierNameSyntax ins) {
+                    data.ArrayMode = AeroArrayInfo.Mode.RefField;
+                    data.KeyName   = ins.ToString();
+                }
+
+                if (args[0].Expression is LiteralExpressionSyntax le) {
+                    data.ArrayMode = AeroArrayInfo.Mode.FixedSize;
+                    data.Length    = int.Parse(le.ToString());
+                }
+
+                if (args[0].Expression is TypeOfExpressionSyntax es && es.Type is PredefinedTypeSyntax pdt) {
+                    data.ArrayMode = AeroArrayInfo.Mode.LengthType;
+                    data.KeyType   = pdt.ToString();
+                }
+            }
+            else if (numArgs == 0) {
+                data.IsArray   = true;
+                data.ArrayMode = AeroArrayInfo.Mode.NullTerminated;
             }
 
             return data;

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -78,7 +79,7 @@ namespace Aero.Gen
         {
             // Chars are 2 bytes in c# for unicode, we don't want that :>
             var sizeOfTypeStr = typeStr == "char" ? "byte" : typeStr;
-            
+
             var ifStatment = @$"if (data.Length < (offset + sizeof({sizeOfTypeStr})))";
             return new AgBlock(this, () =>
             {
@@ -102,6 +103,35 @@ namespace Aero.Gen
             {
                 if (Config.DiagLogging) {
                     AddDiagLog($"Read {typeStr}({{sizeof({sizeOfTypeStr})}} bytes) for {fieldName} at offset {{offset - sizeof({sizeOfTypeStr})}}.");
+                }
+            }, defaultAddNoContent: true);
+        }
+
+        public AgBlock AddBoundsCheckKnownLength(string fieldName, string typeStr, string length)
+        {
+            var ifStatment = @$"if (data.Length < (offset + {length}))";
+            return new AgBlock(this, () =>
+            {
+                if (Config.BoundsCheck) {
+                    if (Config.DiagLogging) {
+                        AddLine($"{ifStatment} {{");
+                        Indent();
+                        {
+                            AddLines(
+                                @$"LogDiag($""Failed to read {typeStr}({length} bytes) for {fieldName}, offset: {{offset}} data length: {{data.Length}}, read overflowed by {{(offset + {length}) - data.Length}}."");",
+                                "return -offset;");
+                        }
+                        UnIndent();
+                        AddLine("}");
+                    }
+                    else {
+                        AddLine($"{ifStatment} return -offset;");
+                    }
+                }
+            }, () =>
+            {
+                if (Config.DiagLogging) {
+                    AddDiagLog($"Read {typeStr}({length} bytes) for {fieldName} at offset {{offset - {length}}}.");
                 }
             }, defaultAddNoContent: true);
         }
@@ -168,21 +198,31 @@ namespace Aero.Gen
             if (hasIf) AddLine($"if ({fieldInfo.IfStatment})");
 
             {
-                if (closeScope) EndScope();
+                var depthDiff = fieldInfo.Depth - lastDepth;
+                if (depthDiff < 0) {
+                    for (int i = 0; i < -depthDiff; i++) {
+                        EndScope(true);
+                    }
+                }
+
+                //if (closeScope) EndScope();
                 if (fieldInfo.Depth          > lastDepth || hasIf) StartScope();
                 closeScope = fieldInfo.Depth < lastDepth;
                 lastDepth  = fieldInfo.Depth;
             }
 
-            if (!fieldInfo.IsArray && !fieldInfo.IsBlock) {
+            if (fieldInfo.IsArray) {
+                CreateArrayReader(fieldInfo, ref lastDepth, ref closeScope);
+            }
+            else if (fieldInfo.IsString) {
+                CreateStringReader(fieldInfo, ref lastDepth, ref closeScope);
+            }
+            else if (!fieldInfo.IsArray && !fieldInfo.IsBlock) {
                 AddLine($"// Read {fieldInfo.FieldName}, type: {fieldInfo.TypeStr}");
                 var typeStr = fieldInfo.IsEnum ? fieldInfo.EnumType : fieldInfo.TypeStr;
                 using (AddBoundsCheck(fieldInfo.FieldName, typeStr)) {
                     CreateReadType(fieldInfo.FieldName, typeStr, fieldInfo.IsEnum ? fieldInfo.TypeStr : null);
                 }
-            }
-            else if (fieldInfo.IsArray) {
-                CreateArrayReader(fieldInfo, ref lastDepth, ref closeScope);
             }
 
             if (hasIf) {
@@ -200,10 +240,10 @@ namespace Aero.Gen
             else if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
                 arrayLen = $"{fieldInfo.FieldName}Len";
                 using (AddBoundsCheck(arrayLen, fieldInfo.TypeStr)) {
-                    AddLine($"int {arrayLen} = MemoryMarshal.Read<{fieldInfo.TypeStr}>(data.Slice(offset, sizeof({fieldInfo.TypeStr})));");
+                    AddLine($"{fieldInfo.ArrayInfo.KeyType} {arrayLen} = MemoryMarshal.Read<{fieldInfo.ArrayInfo.KeyType}>(data.Slice(offset, sizeof({fieldInfo.ArrayInfo.KeyType})));");
                 }
 
-                AddLine($"offset += sizeof(int);");
+                AddLine($"offset += sizeof({fieldInfo.ArrayInfo.KeyType});");
                 AddLine($"{fieldInfo.FieldName} = new {fieldInfo.TypeStr}[{arrayLen}];");
             }
             else if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.RefField) {
@@ -214,20 +254,66 @@ namespace Aero.Gen
             var idxKey = $"idx{fieldInfo.Depth}";
             using (ForLen("int", arrayLen, idxKey)) {
                 if (fieldInfo.IsBlock) {
-                    foreach (var fieldInfo2 in fieldInfo.GetSubFieldsForArrayBlock(SyntaxReceiver,$"{fieldInfo.FieldName}[{idxKey}]")) {
+                    foreach (var fieldInfo2 in fieldInfo.GetSubFieldsForArrayBlock(SyntaxReceiver, $"{fieldInfo.FieldName}[{idxKey}]")) {
                         CreateReader(fieldInfo2, ref lastDepth, ref closeScope);
                     }
                 }
                 else {
                     var arrFInfo = new AeroFieldInfo
                     {
-                        FieldName = $"{fieldInfo.FieldName}[{idxKey}]",
-                        TypeStr   = fieldInfo.TypeStr,
-                        IsArray   = false,
-                        IsBlock   = false
+                        FieldName  = $"{fieldInfo.FieldName}[{idxKey}]",
+                        TypeStr    = fieldInfo.TypeStr,
+                        IsArray    = false,
+                        IsBlock    = false,
+                        IsString   = fieldInfo.IsString,
+                        ArrayInfo  = fieldInfo.ArrayInfo,
+                        StringInfo = fieldInfo.StringInfo
                     };
                     CreateReader(arrFInfo, ref lastDepth, ref closeScope);
                 }
+            }
+        }
+
+        private void CreateStringReader(AeroFieldInfo fieldInfo, ref int lastDepth, ref bool closeScope)
+        {
+            var nonIdxName = fieldInfo.FieldName.IndexOf("[") > 0 ? fieldInfo.FieldName.Substring(0, fieldInfo.FieldName.IndexOf("[")) : fieldInfo.FieldName;
+            nonIdxName = $"{nonIdxName}Str";
+            if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize) {
+                using (AddBoundsCheckKnownLength(fieldInfo.FieldName, fieldInfo.TypeStr, $"{fieldInfo.StringInfo.Length}")) {
+                    AddLine($"{fieldInfo.FieldName} = Encoding.UTF8.GetString(data.Slice(offset, {fieldInfo.StringInfo.Length}));");
+                    AddLine($"offset += {fieldInfo.StringInfo.Length};");
+                }
+            }
+            else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.RefField) {
+                var arrayLen = $"{fieldInfo.StringInfo.KeyName}";
+                using (AddBoundsCheckKnownLength(fieldInfo.FieldName, fieldInfo.TypeStr, $"{fieldInfo.StringInfo.Length}")) {
+                    AddLine($"{fieldInfo.FieldName} = Encoding.UTF8.GetString(data.Slice(offset, {arrayLen}));");
+                    AddLine($"offset += {arrayLen};");
+                }
+            }
+            else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
+                string arrayLen;
+
+                using (AddBoundsCheck(fieldInfo.FieldName, fieldInfo.StringInfo.KeyType)) {
+                    arrayLen = $"{nonIdxName}Len";
+                    AddLine($"{fieldInfo.StringInfo.KeyType} {arrayLen} = MemoryMarshal.Read<{fieldInfo.StringInfo.KeyType}>(data.Slice(offset, sizeof({fieldInfo.StringInfo.KeyType})));");
+                    AddLine($"offset += sizeof({fieldInfo.StringInfo.KeyType});");
+                }
+
+                using (AddBoundsCheckKnownLength(fieldInfo.FieldName, fieldInfo.TypeStr, $"{arrayLen}")) {
+                    AddLine($"{fieldInfo.FieldName} = Encoding.UTF8.GetString(data.Slice(offset, {arrayLen}));");
+                    AddLine($"offset += {arrayLen};");
+                }
+            }
+            else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) { // Read until a 0x00 or the end of the span
+                // Get the length to read
+                var lenName        = $"{nonIdxName}Len";
+                var reachedEndName = $"{nonIdxName}ReachedEndOfSpan";
+                AddLine($"int {lenName} = data.Slice(offset, data.Length - offset).IndexOf<byte>(0x00);");
+                AddLine($"bool {reachedEndName} = {lenName} == -1;");
+                AddLine($"{lenName} = {reachedEndName} ? (data.Length - offset) : {lenName};");
+                AddLine($"{fieldInfo.FieldName} = Encoding.UTF8.GetString(data.Slice(offset, {lenName}));");
+                AddLine($"offset += {reachedEndName} ? {lenName} : ({lenName} + 1);");
             }
         }
 

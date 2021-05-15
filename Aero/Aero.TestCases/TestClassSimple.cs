@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
 using Aero.Gen.Attributes;
 using static Aero.Gen.Attributes.AeroIfAttribute;
 
@@ -49,7 +51,7 @@ namespace Aero.TestCases
         [AeroIf("Byte", 0)]
         public double Double2;*/
         
-        public TestFlags Bytea;
+        /*public TestFlags Bytea;
         
         public byte Byte;
         
@@ -71,6 +73,18 @@ namespace Aero.TestCases
         //[AeroIf("Byte", AeroIfAttribute.Ops.Equal, 0.5f, 1.0f)]
         public TestSubDataOne TestSubData;
         public TestSubDataTwo TestSubData2;
+        
+        [AeroString(20)]
+        public string TestString;
+        
+        [AeroString(nameof(Byte))]
+        public string TestString2;
+        
+        [AeroString(typeof(int))]
+        public string TestString3;*/
+        
+        [AeroString]
+        public string TestString4;
 
         public TestCase1Main()
         {
@@ -79,13 +93,13 @@ namespace Aero.TestCases
 
         public void TestRead(ReadOnlySpan<byte> data)
         {
-            int offset = 0;
+            int offset = 1;
             //Byte    = data[0];
             //Char    = (char)data[0];
             //IntTest = BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, 4));
 
-            TestSubData.Byte          = 0;
-            TestSubData2.SubData.Byte = 0;
+            //TestSubData.Byte          = 0;
+            //TestSubData2.SubData.Byte = 0;
 
             TestFlags flagsTest = TestFlags.Flag2;
             if ((flagsTest & TestFlags.Flag2) == 0) {
@@ -95,6 +109,10 @@ namespace Aero.TestCases
             if ((flagsTest & TestFlags.Flag2) != 0) {
 
             }
+
+            //TestString = Encoding.UTF8.GetString(data);
+            
+            data.Slice(offset, data.Length - offset).IndexOf<byte>(0x00);
         }
     }
 }

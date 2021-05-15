@@ -12,6 +12,11 @@ Why Aero, well she did talk alot so....
 
 TODO
 
+# Generated Functions
+The following functions will be generated on Aero marked classes
+
+* __Unpack__: ``int Unpack(ReadOnlySpan<byte> data)`` Unpack the given span into the class;
+
 # Attributes
 ## ``[Aero]``
 Marks a class as one that should have readers, writers and such generated for it.
@@ -58,7 +63,16 @@ The ops options are:
 * HasFlag
 * DoesntHaveFlag
 
+## ``[AeroString]``
+Strings should be marked with this attribute to be parsed correctly.
+* ``[AeroString(nameof(LenghtField))]``: Similar to the array attribute you can pass the name of a already defined numeric value to be used as the length of the string
+* ``[AeroString(typeof(byte))]``: Marks the string as length prefixed with the given type, eg will read a byte and then that number of chars into the string
+* ``[AeroString(10)]``: Read a fixed size string, in this case will read 10 chars as a string
+* ``[AeroString]``: Defines a null terminated string, will read until it gets a ``0x00`` or it reaches the end of the span.
+
 # Examples
+Here are some exampls, for more you can see the unit tests in the project.
+
 ## Example 1
 A basic example for all that is needed to have basic value types serialised
 
@@ -84,7 +98,7 @@ A basic example with arrays and some logic
 
 ```csharp
 [Aero]
-public partial class SimpleTypes
+public partial class Example2
 {
     public byte   Byte;
     public char   Char;
@@ -100,5 +114,27 @@ public partial class SimpleTypes
     // If the Byte value is 1 then the value is read, other wise it isn't
     [AeroIf(nameof(Byte), 1)]
     public int ShouldBeReadIfByteIs1;
+}
+```
+
+## Example 3
+A basic example of string parsing
+
+```csharp
+[Aero]
+public partial class Example3
+{
+  [AeroString]
+  public string NulNullTerminatedString;
+  
+  [AeroString(10)]
+  public string FixedSizeString;
+  
+  [AeroString(typeof(byte))]
+  public string ByteLengthPrefixedString;
+  
+  public int StringLength;
+  [AeroString(nameof(StringLength))]
+  public string VarablePrefixedLengthString;
 }
 ```
