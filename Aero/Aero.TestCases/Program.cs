@@ -16,6 +16,7 @@ namespace Aero.TestCases
         private static Compilation InputCompilation = CreateCompilation(@"
 using System.Net.Security;
 using Aero.Gen.Attributes;
+using System.Numerics;
 
 namespace Aero.TestCases
 {
@@ -56,7 +57,12 @@ public class Test2
     [Aero]
     public partial class TestCase1
     {
-        
+
+        [AeroArray(2)]
+        public Vector2[] Vector2Test;
+
+        public Vector2 Vec2;
+
         public TestSubDataTwo IntArray4;
 
         [AeroArray(typeof(int))]

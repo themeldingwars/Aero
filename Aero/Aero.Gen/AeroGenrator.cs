@@ -59,6 +59,9 @@ namespace Aero.Gen
 
     #endregion
 
+        // These types have special case handlers to be treated like simpler value types
+        public static readonly string[] SpecialCasesTypes = new[] { "vector2", "vector3", "vector4", "quaternion" };
+
         public void Initialize(GeneratorInitializationContext context)
         {
             context.RegisterForSyntaxNotifications(() => new AeroSyntaxReceiver());

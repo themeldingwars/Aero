@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using Aero.Gen.Attributes;
@@ -50,6 +51,8 @@ namespace Aero.TestCases
         public double Double;
         [AeroIf("Byte", 0)]
         public double Double2;*/
+
+        public Vector2 Vec2;
         
         /*public TestFlags Bytea;
         
@@ -113,6 +116,8 @@ namespace Aero.TestCases
             //TestString = Encoding.UTF8.GetString(data);
             
             data.Slice(offset, data.Length - offset).IndexOf<byte>(0x00);
+
+            //Vec2 = MemoryMarshal.Read<Vector2>(data);
         }
     }
 }

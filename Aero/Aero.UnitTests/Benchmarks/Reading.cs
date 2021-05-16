@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Numerics;
 using Aero.Gen.Attributes;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
@@ -34,6 +35,12 @@ namespace Aero.UnitTests.Benchmarks
     {
         [AeroArray(100)] public SubType[] SubTypeArray;
     }
+    
+    [Aero]
+    public partial class BenchmarkVector2Array2Reading
+    {
+        [AeroArray(2)] public Vector2[] Vec2Array;
+    }
 
     //[SimpleJob(RuntimeMoniker.NetCoreApp30)]
     [SimpleJob(RuntimeMoniker.NetCoreApp50, launchCount: 1, warmupCount: 5, targetCount: 10)]
@@ -42,13 +49,14 @@ namespace Aero.UnitTests.Benchmarks
     [JsonExporterAttribute.FullCompressed]
     public class Reading
     {
-        private byte[]                    TestData1;
-        private SimpleTypes               SimpleTypesReader = new SimpleTypes();
-        private SubTypeTest2              SubTypesReader    = new SubTypeTest2();
-        private BenchmarkArrayReading     ArrayReader       = new BenchmarkArrayReading();
-        private BenchmarkByteArrayReading ArrayReader2      = new BenchmarkByteArrayReading();
-        private BenchmarkIntArrayReading  ArrayReader3      = new BenchmarkIntArrayReading();
-        private BenchmarkSubArrayReading  ArrayReader4      = new BenchmarkSubArrayReading();
+        private byte[]                        TestData1;
+        private SimpleTypes                   SimpleTypesReader   = new SimpleTypes();
+        private SubTypeTest2                  SubTypesReader      = new SubTypeTest2();
+        private BenchmarkArrayReading         ArrayReader         = new BenchmarkArrayReading();
+        private BenchmarkByteArrayReading     ArrayReader2        = new BenchmarkByteArrayReading();
+        private BenchmarkIntArrayReading      ArrayReader3        = new BenchmarkIntArrayReading();
+        private BenchmarkSubArrayReading      ArrayReader4        = new BenchmarkSubArrayReading();
+        private BenchmarkVector2Array2Reading Vector2Array2Reader = new BenchmarkVector2Array2Reading();
 
         private StringTest1 StringTest1 = new StringTest1();
         private StringTest3 StringTest2 = new StringTest3();
@@ -140,5 +148,12 @@ namespace Aero.UnitTests.Benchmarks
         }
 
     #endregion
+        
+        [Benchmark]
+        public int Vector2Array2Read()
+        {
+            ReadOnlySpan<byte> data = new byte[] { 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x80, 0x40  };
+            return Vector2Array2Reader.Unpack(data);
+        }
     }
 }

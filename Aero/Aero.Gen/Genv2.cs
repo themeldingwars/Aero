@@ -29,6 +29,7 @@ namespace Aero.Gen
             UsingsToAdd.Add("System.Buffers.Binary");
             UsingsToAdd.Add("System.Runtime.InteropServices");
             UsingsToAdd.Add("System.Text");
+            UsingsToAdd.Add("System.Numerics");
         }
 
     #region Code adding functions
@@ -80,7 +81,16 @@ namespace Aero.Gen
             // Chars are 2 bytes in c# for unicode, we don't want that :>
             var sizeOfTypeStr = typeStr == "char" ? "byte" : typeStr;
 
-            var ifStatment = @$"if (data.Length < (offset + sizeof({sizeOfTypeStr})))";
+            var sizeStr = typeStr switch
+            {
+                "Vector2"    => "8",
+                "Vector3"    => "12",
+                "Vector4"    => "16",
+                "Quaternion" => "16",
+                _            => $"sizeof({sizeOfTypeStr})"
+            };
+
+            var ifStatment = @$"if (data.Length < (offset + {sizeStr}))";
             return new AgBlock(this, () =>
             {
                 if (Config.BoundsCheck) {
@@ -89,7 +99,7 @@ namespace Aero.Gen
                         Indent();
                         {
                             AddLines(
-                                @$"LogDiag($""Failed to read {typeStr}({{sizeof({sizeOfTypeStr})}} bytes) for {fieldName}, offset: {{offset}} data length: {{data.Length}}, read overflowed by {{(offset + sizeof({sizeOfTypeStr})) - data.Length}}."");",
+                                @$"LogDiag($""Failed to read {typeStr}({{{sizeStr}}} bytes) for {fieldName}, offset: {{offset}} data length: {{data.Length}}, read overflowed by {{(offset + {sizeStr}) - data.Length}}."");",
                                 "return -offset;");
                         }
                         UnIndent();
@@ -102,7 +112,8 @@ namespace Aero.Gen
             }, () =>
             {
                 if (Config.DiagLogging) {
-                    AddDiagLog($"Read {typeStr}({{sizeof({sizeOfTypeStr})}} bytes) for {fieldName} at offset {{offset - sizeof({sizeOfTypeStr})}}.");
+                    AddDiagLog(
+                        $"Read {typeStr}({{{sizeStr}}} bytes) for {fieldName} at offset {{offset - {sizeStr}}}.");
                 }
             }, defaultAddNoContent: true);
         }
@@ -240,7 +251,8 @@ namespace Aero.Gen
             else if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
                 arrayLen = $"{fieldInfo.FieldName}Len";
                 using (AddBoundsCheck(arrayLen, fieldInfo.TypeStr)) {
-                    AddLine($"{fieldInfo.ArrayInfo.KeyType} {arrayLen} = MemoryMarshal.Read<{fieldInfo.ArrayInfo.KeyType}>(data.Slice(offset, sizeof({fieldInfo.ArrayInfo.KeyType})));");
+                    AddLine(
+                        $"{fieldInfo.ArrayInfo.KeyType} {arrayLen} = MemoryMarshal.Read<{fieldInfo.ArrayInfo.KeyType}>(data.Slice(offset, sizeof({fieldInfo.ArrayInfo.KeyType})));");
                 }
 
                 AddLine($"offset += sizeof({fieldInfo.ArrayInfo.KeyType});");
@@ -254,7 +266,8 @@ namespace Aero.Gen
             var idxKey = $"idx{fieldInfo.Depth}";
             using (ForLen("int", arrayLen, idxKey)) {
                 if (fieldInfo.IsBlock) {
-                    foreach (var fieldInfo2 in fieldInfo.GetSubFieldsForArrayBlock(SyntaxReceiver, $"{fieldInfo.FieldName}[{idxKey}]")) {
+                    foreach (var fieldInfo2 in fieldInfo.GetSubFieldsForArrayBlock(SyntaxReceiver,
+                        $"{fieldInfo.FieldName}[{idxKey}]")) {
                         CreateReader(fieldInfo2, ref lastDepth, ref closeScope);
                     }
                 }
@@ -276,17 +289,22 @@ namespace Aero.Gen
 
         private void CreateStringReader(AeroFieldInfo fieldInfo, ref int lastDepth, ref bool closeScope)
         {
-            var nonIdxName = fieldInfo.FieldName.IndexOf("[") > 0 ? fieldInfo.FieldName.Substring(0, fieldInfo.FieldName.IndexOf("[")) : fieldInfo.FieldName;
+            var nonIdxName = fieldInfo.FieldName.IndexOf("[") > 0
+                ? fieldInfo.FieldName.Substring(0, fieldInfo.FieldName.IndexOf("["))
+                : fieldInfo.FieldName;
             nonIdxName = $"{nonIdxName}Str";
             if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize) {
-                using (AddBoundsCheckKnownLength(fieldInfo.FieldName, fieldInfo.TypeStr, $"{fieldInfo.StringInfo.Length}")) {
-                    AddLine($"{fieldInfo.FieldName} = Encoding.UTF8.GetString(data.Slice(offset, {fieldInfo.StringInfo.Length}));");
+                using (AddBoundsCheckKnownLength(fieldInfo.FieldName, fieldInfo.TypeStr,
+                    $"{fieldInfo.StringInfo.Length}")) {
+                    AddLine(
+                        $"{fieldInfo.FieldName} = Encoding.UTF8.GetString(data.Slice(offset, {fieldInfo.StringInfo.Length}));");
                     AddLine($"offset += {fieldInfo.StringInfo.Length};");
                 }
             }
             else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.RefField) {
                 var arrayLen = $"{fieldInfo.StringInfo.KeyName}";
-                using (AddBoundsCheckKnownLength(fieldInfo.FieldName, fieldInfo.TypeStr, $"{fieldInfo.StringInfo.Length}")) {
+                using (AddBoundsCheckKnownLength(fieldInfo.FieldName, fieldInfo.TypeStr,
+                    $"{fieldInfo.StringInfo.Length}")) {
                     AddLine($"{fieldInfo.FieldName} = Encoding.UTF8.GetString(data.Slice(offset, {arrayLen}));");
                     AddLine($"offset += {arrayLen};");
                 }
@@ -296,7 +314,8 @@ namespace Aero.Gen
 
                 using (AddBoundsCheck(fieldInfo.FieldName, fieldInfo.StringInfo.KeyType)) {
                     arrayLen = $"{nonIdxName}Len";
-                    AddLine($"{fieldInfo.StringInfo.KeyType} {arrayLen} = MemoryMarshal.Read<{fieldInfo.StringInfo.KeyType}>(data.Slice(offset, sizeof({fieldInfo.StringInfo.KeyType})));");
+                    AddLine(
+                        $"{fieldInfo.StringInfo.KeyType} {arrayLen} = MemoryMarshal.Read<{fieldInfo.StringInfo.KeyType}>(data.Slice(offset, sizeof({fieldInfo.StringInfo.KeyType})));");
                     AddLine($"offset += sizeof({fieldInfo.StringInfo.KeyType});");
                 }
 
@@ -305,7 +324,8 @@ namespace Aero.Gen
                     AddLine($"offset += {arrayLen};");
                 }
             }
-            else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) { // Read until a 0x00 or the end of the span
+            else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
+                // Read until a 0x00 or the end of the span
                 // Get the length to read
                 var lenName        = $"{nonIdxName}Len";
                 var reachedEndName = $"{nonIdxName}ReachedEndOfSpan";
@@ -338,28 +358,74 @@ namespace Aero.Gen
                     typeStr = "byte";
                     break;
                 case "int":
-                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "uint":
-                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "short":
-                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "ushort":
-                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "double":
-                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "float":
-                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadSingleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadSingleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "ulong":
-                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadUInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadUInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
                 case "long":
-                    AddLine($"{name} = {typeCast}BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    break;
+
+                case "Vector2":
+                    AddLines($"{name} = new Vector2{{",
+                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
+                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4))",
+                        "};");
+                    AddLine($"offset += 8;"); // 2 floats
+                    wasHandled = false;
+                    break;
+                case "Vector3":
+                    AddLines($"{name} = new Vector3{{",
+                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
+                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
+                        "Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4))",
+                        "};");
+                    AddLine($"offset += 12;"); // 3 floats
+                    wasHandled = false;
+                    break;
+                case "Vector4":
+                    AddLines($"{name} = new Vector4{{",
+                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
+                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
+                        "Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4)),",
+                        "W = MemoryMarshal.Read<float>(data.Slice(offset + 12, 4))",
+                        "};");
+                    AddLine($"offset += 16;"); // 4 floats
+                    wasHandled = false;
+                    break;
+                case "Quaternion":
+                    AddLines($"{name} = new Quaternion{{",
+                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
+                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
+                        "Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4)),",
+                        "W = MemoryMarshal.Read<float>(data.Slice(offset + 12, 4))",
+                        "};");
+                    AddLine($"offset += 16;"); // 4 floats
+                    wasHandled = false;
                     break;
 
                 default:

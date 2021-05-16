@@ -156,10 +156,16 @@ namespace Aero.Gen
             fieldInfo.IsBlock = aeroBlock != null;
 
             // Check if the struct is marked and check arrays too
-            if ((typeInfo.TypeKind == TypeKind.Struct && typeInfo.SpecialType     == SpecialType.None && !fieldInfo.IsBlock) ||
-                (typeInfo is IArrayTypeSymbol ats     && ats.ElementType.TypeKind == TypeKind.Struct  && ats.ElementType.SpecialType == SpecialType.None && !fieldInfo.IsBlock)) {
-                SyntaxReceiver.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.StructNotMarkedAsAeroBlockError, field.GetLocation(), fieldName, typeInfo.Name));
-                return null;
+            if (!AeroGenerator.SpecialCasesTypes.Contains(fieldInfo.TypeStr.ToLower()))
+            {
+                if ((typeInfo.TypeKind == TypeKind.Struct && typeInfo.SpecialType == SpecialType.None &&
+                     !fieldInfo.IsBlock) ||
+                    (typeInfo is IArrayTypeSymbol ats && ats.ElementType.TypeKind == TypeKind.Struct &&
+                     ats.ElementType.SpecialType == SpecialType.None && !fieldInfo.IsBlock)) {
+                    SyntaxReceiver.Context.ReportDiagnostic(Diagnostic.Create(
+                        AeroGenerator.StructNotMarkedAsAeroBlockError, field.GetLocation(), fieldName, typeInfo.Name));
+                    return null;
+                }
             }
 
             if (aeroBlock != null && !fieldInfo.IsArray) {

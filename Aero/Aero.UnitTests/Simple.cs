@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using Aero.Gen.Attributes;
 using NUnit.Framework;
 
@@ -54,6 +55,31 @@ namespace Aero.UnitTests
         public int      IntTest;
         public SubType3 Sub;
     }
+    
+    [Aero]
+    public partial class Vector2Type
+    {
+        public Vector2 Vec2;
+    }
+    
+    [Aero]
+    public partial class Vector3Type
+    {
+        public Vector3 Vec3;
+    }
+    
+    [Aero]
+    public partial class Vector4Type
+    {
+        public Vector4 Vec4;
+    }
+    
+    [Aero]
+    public partial class QuatType
+    {
+        public Quaternion Quat;
+    }
+    
 
     public class Tests
     {
@@ -174,6 +200,78 @@ namespace Aero.UnitTests
                     test.ULong                                    == SimpleTypesRef.ULong      &&
                     Math.Abs(test.Float  - SimpleTypesRef.Float)  < 0.0001f                    &&
                     Math.Abs(test.Double - SimpleTypesRef.Double) < 0.0001f);
+        }
+        
+        [Test]
+        public void Vector2Test()
+        {
+            ReadOnlySpan<byte> data = new byte[] { 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x80, 0x40  };
+            var test = new Vector2Type();
+            if (test.Unpack(data) > -1) {
+                if (test.Vec2.X == 1f && test.Vec2.Y == 2f) {
+                    Assert.Pass();
+                }
+                else {
+                    Assert.Fail("Values didn't match");
+                }
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
+        }
+        
+        [Test]
+        public void Vector3Test()
+        {
+            ReadOnlySpan<byte> data = new byte[] { 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x80, 0x40  };
+            var test = new Vector3Type();
+            if (test.Unpack(data) > -1) {
+                if (test.Vec3.X == 1f && test.Vec3.Y == 2f && test.Vec3.Z == 3f) {
+                    Assert.Pass();
+                }
+                else {
+                    Assert.Fail("Values didn't match");
+                }
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
+        }
+        
+        [Test]
+        public void Vector4Test()
+        {
+            ReadOnlySpan<byte> data = new byte[] { 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x80, 0x40  };
+            var test = new Vector4Type();
+            if (test.Unpack(data) > -1) {
+                if (test.Vec4.X == 1f && test.Vec4.Y == 2f && test.Vec4.Z == 3f && test.Vec4.W == 4f) {
+                    Assert.Pass();
+                }
+                else {
+                    Assert.Fail("Values didn't match");
+                }
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
+        }
+        
+        [Test]
+        public void QuatTest()
+        {
+            ReadOnlySpan<byte> data = new byte[] { 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x80, 0x40  };
+            var test = new QuatType();
+            if (test.Unpack(data) > -1) {
+                if (test.Quat.X == 1f && test.Quat.Y == 2f && test.Quat.Z == 3f && test.Quat.W == 4f) {
+                    Assert.Pass();
+                }
+                else {
+                    Assert.Fail("Values didn't match");
+                }
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
         }
     }
 }

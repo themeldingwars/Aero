@@ -17,6 +17,23 @@ The following functions will be generated on Aero marked classes
 
 * __Unpack__: ``int Unpack(ReadOnlySpan<byte> data)`` Unpack the given span into the class;
 
+# Supported Types
+* byte
+* char
+* int
+* uint
+* long
+* ulong
+* short
+* ushort
+* float
+* double
+* string
+* Vector2
+* Vector3
+* Vector4
+* Quaternion
+
 # Attributes
 ## ``[Aero]``
 Marks a class as one that should have readers, writers and such generated for it.
