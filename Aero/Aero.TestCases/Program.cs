@@ -128,6 +128,7 @@ public class Test2
             var data = new byte[] { 0x02, 0x01, 0x41, 0x9C, 0xFF, 0xFF, 0xFF }.AsSpan();
             var test = new TestCase1Main();
             test.Unpack(data);
+            test.GetPackedSize();
 
             /*foreach (var log in test.DiagLogs) {
                 Console.WriteLine(log);

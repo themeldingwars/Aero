@@ -42,6 +42,12 @@ namespace Aero.UnitTests
         public SubType Sub;
     }
     
+    [AeroBlock]
+    public struct SubTypeSimple
+    {
+        public int     IntTest;
+    }
+    
     [Aero]
     public partial class SubTypeTest2
     {
@@ -90,7 +96,7 @@ namespace Aero.UnitTests
             0x99, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x40
         };
 
-        private static SimpleTypes SimpleTypesRef = new SimpleTypes()
+        public static SimpleTypes SimpleTypesRef = new SimpleTypes()
         {
             Byte       = 1,
             Char       = 'A',

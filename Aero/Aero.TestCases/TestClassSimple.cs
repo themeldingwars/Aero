@@ -50,13 +50,13 @@ namespace Aero.TestCases
         [AeroIf("IntTest", -100)]
         public double Double;
         [AeroIf("Byte", 0)]
-        public double Double2;*/
+        public double Double2;
 
         public Vector2 Vec2;
         
-        /*public TestFlags Bytea;
+        public TestFlags Bytea;
         
-        public byte Byte;
+        //public byte Byte;
         
         [AeroIf("Byte", 0)]
         [AeroIf("Byte", 1)]
@@ -84,11 +84,18 @@ namespace Aero.TestCases
         public string TestString2;
         
         [AeroString(typeof(int))]
-        public string TestString3;*/
+        public string TestString3;
         
         [AeroString]
         public string TestString4;
+        
+        public TestSubDataTwo TestSubData3;*/
 
+        public byte Byte;
+        
+        [AeroIf(nameof(Byte), 1)]
+        public TestSubDataOne TestSubData4;
+        
         public TestCase1Main()
         {
             

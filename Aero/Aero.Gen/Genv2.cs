@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection.Emit;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
@@ -32,12 +33,27 @@ namespace Aero.Gen
             UsingsToAdd.Add("System.Numerics");
         }
 
+        private string GetTypeSize(string typeStr)
+        {
+            var sizeOfTypeStr = typeStr == "char" ? "byte" : typeStr;
+            var size = typeStr switch
+            {
+                "Vector2"    => "8",
+                "Vector3"    => "12",
+                "Vector4"    => "16",
+                "Quaternion" => "16",
+                _            => $"sizeof({sizeOfTypeStr})"
+            };
+
+            return size;
+        }
+
     #region Code adding functions
 
         protected static int  TabSpaces = 4;
         public           void Indent()                        => IndentLevel += TabSpaces;
         public           void UnIndent()                      => IndentLevel -= TabSpaces;
-        public           void AddLine(string line)            => Sb.AppendLine($"{new string(' ', IndentLevel)}{line}");
+        public           void AddLine(string line)            => Sb.AppendLine($"{new string(' ', Math.Max(IndentLevel, 0))}{line}");
         public           void AddLine()                       => AddLine("");
         public           void AddLines(params string[] lines) => Array.ForEach(lines, AddLine);
 
@@ -81,14 +97,7 @@ namespace Aero.Gen
             // Chars are 2 bytes in c# for unicode, we don't want that :>
             var sizeOfTypeStr = typeStr == "char" ? "byte" : typeStr;
 
-            var sizeStr = typeStr switch
-            {
-                "Vector2"    => "8",
-                "Vector3"    => "12",
-                "Vector4"    => "16",
-                "Quaternion" => "16",
-                _            => $"sizeof({sizeOfTypeStr})"
-            };
+            var sizeStr = GetTypeSize(sizeOfTypeStr);
 
             var ifStatment = @$"if (data.Length < (offset + {sizeStr}))";
             return new AgBlock(this, () =>
@@ -164,6 +173,7 @@ namespace Aero.Gen
                     if (Config.DiagLogging) AddDiagBoilerplate();
 
                     CreateReader(cd);
+                    CreateGetPackedSize(cd);
                 }
             }
 
@@ -203,6 +213,166 @@ namespace Aero.Gen
             }
         }
 
+        public virtual void CreateGetPackedSize(ClassDeclarationSyntax cd)
+        {
+            using (Function("public int GetPackedSize()")) {
+                AddLine("int size = 0;");
+                AddLine();
+
+                ClassFieldGen(cd, (fieldInfo, arrayStart) =>
+                {
+                    string sizeStr = "";
+
+                    if (fieldInfo.IsString) {
+                        if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize) {
+                            sizeStr = $"{fieldInfo.StringInfo.Length}";
+                        }
+                        else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
+                            sizeStr = $"{fieldInfo.FieldName}.Length + 1";
+                        }
+                        else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
+                            sizeStr = $"sizeof({fieldInfo.StringInfo.KeyType}) + {fieldInfo.FieldName}.Length";
+                        }
+                        else {
+                            sizeStr = $"{fieldInfo.FieldName}.Length";
+                        }
+                    }
+                    else if (!fieldInfo.IsBlock) {
+                        sizeStr = $"{GetTypeSize(fieldInfo.TypeStr)}";
+                    }
+
+                    if (fieldInfo.IsArray && !fieldInfo.IsBlock) {
+                        if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.RefField) {
+                            AddLine($"size += {sizeStr} * {fieldInfo.ArrayInfo.KeyName};");
+                        }
+                        else if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
+                            AddLine(
+                                $"size += {GetTypeSize(fieldInfo.ArrayInfo.KeyType)} + ({sizeStr} * {fieldInfo.FieldName}.Length);");
+                        }
+                        else if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize) {
+                            AddLine($"size += {sizeStr} * {fieldInfo.ArrayInfo.Length};");
+                        }
+                    }
+                    else if (arrayStart) {
+                        //AddLine($"size += {GetTypeSize(fieldInfo.ArrayInfo.KeyType)} + ({sizeStr} * {fieldInfo.FieldName}.Length);");
+
+                        var idxKey = $"idx{fieldInfo.Depth}";
+                        AddLine($"for(int {idxKey} = 0; {idxKey} < {fieldInfo.FieldName}.Length; {idxKey}++)");
+                        //using (ForLen("int", arrayLen, idxKey)) {
+                    }
+                    else {
+                        AddLine($"size += {sizeStr};");
+                    }
+                });
+
+                /*int lastDepth           = 0;
+                var aeroFieldEnumerator = new AeroFieldEnumerator(cd, Context);
+                foreach (var fieldInfo in aeroFieldEnumerator) {
+                    AddLine($"// {fieldInfo.FieldName}, Type: {fieldInfo.TypeStr}, IsArray: {fieldInfo.IsArray}, Depth: {fieldInfo.Depth}");
+                    string sizeStr = "";
+
+                    if (fieldInfo.Depth > lastDepth) {
+                        StartScope();
+                    }
+                    else if (fieldInfo.Depth < lastDepth) {
+                        for (int i = 0; i < lastDepth - fieldInfo.Depth; i++) {
+                            EndScope();
+                        }
+                    }
+
+                    lastDepth = fieldInfo.Depth;
+
+                    if (fieldInfo.IsString) {
+                        if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize) {
+                            sizeStr = $"{fieldInfo.StringInfo.Length}";
+                        }
+                        else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
+                            sizeStr = $"{fieldInfo.FieldName}.Length + 1";
+                        }
+                        else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
+                            sizeStr = $"sizeof({fieldInfo.StringInfo.KeyType}) + {fieldInfo.FieldName}.Length";
+                        }
+                        else {
+                            sizeStr = $"{fieldInfo.FieldName}.Length";
+                        }
+                    }
+                    else if (!fieldInfo.IsBlock) {
+                        sizeStr = $"{GetTypeSize(fieldInfo.TypeStr)}";
+                    }
+
+                    if (fieldInfo.IsArray) {
+                        var arrayLen = fieldInfo.ArrayInfo.ArrayMode switch
+                        {
+                            AeroArrayInfo.Mode.RefField   => $"{fieldInfo.ArrayInfo.KeyName}",
+                            AeroArrayInfo.Mode.LengthType => $"{fieldInfo.FieldName}Len",
+                            AeroArrayInfo.Mode.FixedSize  => $"{fieldInfo.ArrayInfo.Length}"
+                        };
+                        
+                        //AddLine($"size += {sizeStr} * {arrayLen};");
+                    }
+                }
+                
+                for (int i = 0; i < lastDepth; i++) {
+                    EndScope();
+                }*/
+
+                AddLine("return size;");
+            }
+        }
+
+        public virtual void ClassFieldGen(ClassDeclarationSyntax cd, Action<AeroFieldInfo, bool> OnField)
+        {
+            int lastDepth           = 0;
+            var aeroFieldEnumerator = new AeroFieldEnumerator(cd, Context);
+            foreach (var fieldInfoItem in aeroFieldEnumerator) {
+                HandleField(fieldInfoItem);
+            }
+
+            for (int i = 0; i < lastDepth; i++) {
+                EndScope();
+            }
+
+            void HandleField(AeroFieldInfo fieldInfo)
+            {
+                AddLine(
+                    $"// {fieldInfo.FieldName}, Type: {fieldInfo.TypeStr}, IsArray: {fieldInfo.IsArray}, IsBlock: {fieldInfo.IsBlock}, Depth: {fieldInfo.Depth}");
+                bool hasIf = fieldInfo.IfStatment != null;
+
+                if (hasIf) {
+                    AddLine($"if ({fieldInfo.IfStatment}) ");
+                }
+
+                if (fieldInfo.Depth > lastDepth || (hasIf && !fieldInfo.IsBlock)) {
+                    StartScope();
+                }
+                else if (fieldInfo.Depth < lastDepth) {
+                    for (int i = 0; i < lastDepth - fieldInfo.Depth; i++) EndScope();
+                }
+
+                lastDepth = fieldInfo.Depth;
+
+                if (fieldInfo.IsArray && fieldInfo.IsBlock) {
+                    OnField(fieldInfo, true);
+                    
+                    var subFields = fieldInfo.GetSubFieldsForArrayBlock(SyntaxReceiver,
+                        $"{fieldInfo.FieldName}[idx{fieldInfo.Depth}]");
+                    foreach (var subField in subFields) {
+                        //subField.IsArray   = true;
+                        subField.ArrayInfo = fieldInfo.ArrayInfo;
+                        subField.Depth++;
+                        HandleField(subField);
+                    }
+                }
+                else if (!fieldInfo.IsBlock) {
+                    OnField(fieldInfo, false);
+                }
+
+                if (hasIf && !fieldInfo.IsBlock) {
+                    EndScope();
+                }
+            }
+        }
+
         private void CreateReader(AeroFieldInfo fieldInfo, ref int lastDepth, ref bool closeScope)
         {
             bool hasIf = fieldInfo.IfStatment != null;
@@ -217,7 +387,7 @@ namespace Aero.Gen
                 }
 
                 //if (closeScope) EndScope();
-                if (fieldInfo.Depth          > lastDepth || hasIf) StartScope();
+                if (fieldInfo.Depth          > lastDepth || (hasIf && !fieldInfo.IsBlock)) StartScope();
                 closeScope = fieldInfo.Depth < lastDepth;
                 lastDepth  = fieldInfo.Depth;
             }
@@ -236,7 +406,7 @@ namespace Aero.Gen
                 }
             }
 
-            if (hasIf) {
+            if (hasIf && !fieldInfo.IsBlock) {
                 EndScope();
             }
         }

@@ -63,6 +63,15 @@ namespace Aero.UnitTests
         public byte ByteToRead;
     }
     
+    [Aero]
+    public partial class IfTest6
+    {
+        public byte IfValue;
+        
+        [AeroIf(nameof(IfValue), 1)]
+        public SubTypeSimple SubTypeToRead;
+    }
+    
     public class IfTests
     {
         private static byte[] IfTest1_Read = new byte[] { 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00 };
@@ -198,6 +207,23 @@ namespace Aero.UnitTests
             var                test = new IfTest5();
             if (test.Unpack(data) > -1) {
                 if (test.ByteToRead == 2) {
+                    Assert.Pass();
+                }
+                
+                Assert.Fail("Value wasn't read");
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
+        }
+        
+        [Test]
+        public void SubTypeIfTest()
+        {
+            ReadOnlySpan<byte> data = new byte[] { 0x01, 0x01, 0x00, 0x00, 0x00 };
+            var                test = new IfTest6();
+            if (test.Unpack(data) > -1) {
+                if (test.SubTypeToRead.IntTest == 1) {
                     Assert.Pass();
                 }
                 

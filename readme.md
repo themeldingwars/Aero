@@ -15,7 +15,25 @@ TODO
 # Generated Functions
 The following functions will be generated on Aero marked classes
 
-* __Unpack__: ``int Unpack(ReadOnlySpan<byte> data)`` Unpack the given span into the class;
+## Unpack:
+``int Unpack(ReadOnlySpan<byte> data)``
+
+Unpacks the given span into the class, the return value is how many bytes were read from the data span.</br>
+If the return int is negative then the unpack failed and that how many bytes were read. (Needs to be compiled with bounds check on)
+```csharp
+var TestPacket = new TestPacket();
+int readBytes = TestPacket.Unpack(packetData);
+```
+
+## GetPackedSize:
+``int GetPackedSize()``
+Calculate the size in bytes this class will have when packed.</br>
+This function will preform much the same logic used for packing but just record the size.
+
+```csharp
+var TestPacket = new TestPacket();
+int SizeThatWillBePacked = TestPacket.GetPackedSize();
+```
 
 # Supported Types
 * byte

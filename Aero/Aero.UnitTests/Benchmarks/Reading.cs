@@ -41,6 +41,20 @@ namespace Aero.UnitTests.Benchmarks
     {
         [AeroArray(2)] public Vector2[] Vec2Array;
     }
+    
+    [Aero]
+    public partial class BenchmarkPackedSizeComplexTest
+    {
+        public int   TestInt;
+        [AeroArray(10)]
+        public int[] TestIntArray;
+        
+        [AeroIf(nameof(TestInt), 1)]
+        public int TestIfValue;
+
+        [AeroArray(20)]
+        public SubType[] TestSubType;
+    }
 
     //[SimpleJob(RuntimeMoniker.NetCoreApp30)]
     [SimpleJob(RuntimeMoniker.NetCoreApp50, launchCount: 1, warmupCount: 5, targetCount: 10)]
@@ -57,6 +71,18 @@ namespace Aero.UnitTests.Benchmarks
         private BenchmarkIntArrayReading      ArrayReader3        = new BenchmarkIntArrayReading();
         private BenchmarkSubArrayReading      ArrayReader4        = new BenchmarkSubArrayReading();
         private BenchmarkVector2Array2Reading Vector2Array2Reader = new BenchmarkVector2Array2Reading();
+
+        private BenchmarkPackedSizeComplexTest PackedSizeComplexTestInstance = new BenchmarkPackedSizeComplexTest
+        {
+            TestInt = 1,
+            TestIntArray = new []{ 0, 1, 2, 3,4, 5, 6, 7, 8, 9 },
+            TestIfValue = 2,
+            TestSubType = new []
+            {
+                new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType(),
+                new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType()
+            }
+        };
 
         private StringTest1 StringTest1 = new StringTest1();
         private StringTest3 StringTest2 = new StringTest3();
@@ -83,6 +109,25 @@ namespace Aero.UnitTests.Benchmarks
                 SimpleTypesReader.ULong      = br.ReadUInt64();
                 SimpleTypesReader.Float      = br.ReadSingle();
                 SimpleTypesReader.Double     = br.ReadDouble();
+            }
+
+            return 1;
+        }
+        
+        [Benchmark]
+        public int BinaryWriterBaseLine()
+        {
+            using (BinaryWriter br = new BinaryWriter(new MemoryStream())) {
+                br.Write(SimpleTypesReader.Byte);
+                br.Write(SimpleTypesReader.Char);
+                br.Write(SimpleTypesReader.IntTest);
+                br.Write(SimpleTypesReader.UintTest);
+                br.Write(SimpleTypesReader.ShortTest);
+                br.Write(SimpleTypesReader.UshortTest);
+                br.Write(SimpleTypesReader.Long);
+                br.Write(SimpleTypesReader.ULong);
+                br.Write(SimpleTypesReader.Float);
+                br.Write(SimpleTypesReader.Double);
             }
 
             return 1;
@@ -154,6 +199,18 @@ namespace Aero.UnitTests.Benchmarks
         {
             ReadOnlySpan<byte> data = new byte[] { 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x80, 0x40  };
             return Vector2Array2Reader.Unpack(data);
+        }
+        
+        [Benchmark]
+        public int GetPackedLengthSimple()
+        {
+            return Tests.SimpleTypesRef.GetPackedSize();
+        }
+        
+        [Benchmark]
+        public int GetPackedLengthComplex()
+        {
+            return PackedSizeComplexTestInstance.GetPackedSize();
         }
     }
 }

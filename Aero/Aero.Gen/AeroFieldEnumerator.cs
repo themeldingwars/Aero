@@ -137,6 +137,7 @@ namespace Aero.Gen
 
                 fieldInfo.IsArray   = arrayAttrData.IsArray;
                 fieldInfo.ArrayInfo = arrayAttrData;
+                //fieldInfo.Depth++;
             }
 
             // String attributes
