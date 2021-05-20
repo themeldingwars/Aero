@@ -130,6 +130,9 @@ public class Test2
             test.Unpack(data);
             test.GetPackedSize();
 
+            var buffer = new Span<byte>();
+            test.Pack(buffer);
+
             /*foreach (var log in test.DiagLogs) {
                 Console.WriteLine(log);
             }*/

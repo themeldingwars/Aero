@@ -193,7 +193,7 @@ namespace Aero.UnitTests
         }
         
         [Test]
-        public void ArrayOfVector2sFixedTester()
+        public void ArrayOfVector2SFixedTester()
         {
             ReadOnlySpan<byte> data = new byte[] { 0x00, 0x00, 0x80, 0x3F, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x80, 0x40  };
             var testObject = new ArrayOfVector2sFixedTest();

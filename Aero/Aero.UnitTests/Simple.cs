@@ -8,16 +8,16 @@ namespace Aero.UnitTests
     [Aero]
     public partial class SimpleTypes
     {
-        public byte   Byte;
-        public char   Char;
-        public int    IntTest;
-        public uint   UintTest;
-        public short  ShortTest;
-        public ushort UshortTest;
-        public long   Long;
-        public ulong  ULong;
-        public float  Float;
-        public double Double;
+        public byte       Byte;
+        public char       Char;
+        public int        IntTest;
+        public uint       UintTest;
+        public short      ShortTest;
+        public ushort     UshortTest;
+        public long       Long;
+        public ulong      ULong;
+        public float      Float;
+        public double     Double;
     }
 
     [AeroBlock]
@@ -107,7 +107,7 @@ namespace Aero.UnitTests
             Long       = -1000000,
             ULong      = 1000000,
             Float      = 1.2f,
-            Double     = 2.5d,
+            Double     = 2.5d
         };
 
         private static byte[] SubType1TypesBytes = new byte[]

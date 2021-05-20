@@ -35,6 +35,17 @@ var TestPacket = new TestPacket();
 int SizeThatWillBePacked = TestPacket.GetPackedSize();
 ```
 
+## Pack:
+``int Pack(Span<byte> buffer)``
+Packs this class into the buffer and returns how many bytes where packed.
+The given buffer span should be atleast big enough to pack all the fields into.
+
+```csharp
+Span<byte> buffer = new byte[10000];
+var TestPacket = new TestPacket();
+int packedSize = TestPacket.Pack(buffer);
+```
+
 # Supported Types
 * byte
 * char
@@ -173,3 +184,10 @@ public partial class Example3
   public string VarablePrefixedLengthString;
 }
 ```
+
+# Config
+The following settings can be used in a .editorconfig file to adjust the generators output (or it should).
+* ``Aero_Enabled``: Enable or disable the generator
+* ``Aero_BoundsCheck``: Enable or disable bounds checking for the unpacker, will return -bytes read if it couldn't read more from the passed buffer
+* ``Aero_DiagLogging``: Enable or disable diagnostic logging from the packer / unpackers
+* ``Aero_LogReadsWrites``: Enable or disable logging the reading or writing done by the packers or unpackers (just the unpackers atm), needs Aero_DiagLogging enabled too.

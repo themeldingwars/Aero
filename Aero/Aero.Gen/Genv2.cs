@@ -50,12 +50,12 @@ namespace Aero.Gen
 
     #region Code adding functions
 
-        protected static int  TabSpaces = 4;
-        public           void Indent()                        => IndentLevel += TabSpaces;
-        public           void UnIndent()                      => IndentLevel -= TabSpaces;
-        public           void AddLine(string line)            => Sb.AppendLine($"{new string(' ', Math.Max(IndentLevel, 0))}{line}");
-        public           void AddLine()                       => AddLine("");
-        public           void AddLines(params string[] lines) => Array.ForEach(lines, AddLine);
+        protected static int TabSpaces = 4;
+        public void Indent() => IndentLevel += TabSpaces;
+        public void UnIndent() => IndentLevel -= TabSpaces;
+        public void AddLine(string line) => Sb.AppendLine($"{new string(' ', Math.Max(IndentLevel, 0))}{line}");
+        public void AddLine() => AddLine("");
+        public void AddLines(params string[] lines) => Array.ForEach(lines, AddLine);
 
     #endregion
 
@@ -173,7 +173,13 @@ namespace Aero.Gen
                     if (Config.DiagLogging) AddDiagBoilerplate();
 
                     CreateReader(cd);
+                    AddLine();
+
                     CreateGetPackedSize(cd);
+                    AddLine();
+
+                    CreateWriter(cd);
+                    AddLine();
                 }
             }
 
@@ -228,7 +234,7 @@ namespace Aero.Gen
                             sizeStr = $"{fieldInfo.StringInfo.Length}";
                         }
                         else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
-                            sizeStr = $"{fieldInfo.FieldName}.Length + 1";
+                            sizeStr = $"({fieldInfo.FieldName}.Length + 1)";
                         }
                         else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
                             sizeStr = $"sizeof({fieldInfo.StringInfo.KeyType}) + {fieldInfo.FieldName}.Length";
@@ -265,58 +271,83 @@ namespace Aero.Gen
                     }
                 });
 
-                /*int lastDepth           = 0;
-                var aeroFieldEnumerator = new AeroFieldEnumerator(cd, Context);
-                foreach (var fieldInfo in aeroFieldEnumerator) {
-                    AddLine($"// {fieldInfo.FieldName}, Type: {fieldInfo.TypeStr}, IsArray: {fieldInfo.IsArray}, Depth: {fieldInfo.Depth}");
-                    string sizeStr = "";
-
-                    if (fieldInfo.Depth > lastDepth) {
-                        StartScope();
-                    }
-                    else if (fieldInfo.Depth < lastDepth) {
-                        for (int i = 0; i < lastDepth - fieldInfo.Depth; i++) {
-                            EndScope();
-                        }
-                    }
-
-                    lastDepth = fieldInfo.Depth;
-
-                    if (fieldInfo.IsString) {
-                        if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize) {
-                            sizeStr = $"{fieldInfo.StringInfo.Length}";
-                        }
-                        else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
-                            sizeStr = $"{fieldInfo.FieldName}.Length + 1";
-                        }
-                        else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
-                            sizeStr = $"sizeof({fieldInfo.StringInfo.KeyType}) + {fieldInfo.FieldName}.Length";
-                        }
-                        else {
-                            sizeStr = $"{fieldInfo.FieldName}.Length";
-                        }
-                    }
-                    else if (!fieldInfo.IsBlock) {
-                        sizeStr = $"{GetTypeSize(fieldInfo.TypeStr)}";
-                    }
-
-                    if (fieldInfo.IsArray) {
-                        var arrayLen = fieldInfo.ArrayInfo.ArrayMode switch
-                        {
-                            AeroArrayInfo.Mode.RefField   => $"{fieldInfo.ArrayInfo.KeyName}",
-                            AeroArrayInfo.Mode.LengthType => $"{fieldInfo.FieldName}Len",
-                            AeroArrayInfo.Mode.FixedSize  => $"{fieldInfo.ArrayInfo.Length}"
-                        };
-                        
-                        //AddLine($"size += {sizeStr} * {arrayLen};");
-                    }
-                }
-                
-                for (int i = 0; i < lastDepth; i++) {
-                    EndScope();
-                }*/
-
                 AddLine("return size;");
+            }
+        }
+
+        public virtual void CreateWriter(ClassDeclarationSyntax cd)
+        {
+            using (Function("public int Pack(Span<byte> buffer)")) {
+                AddLine("int offset = 0;");
+                AddLine();
+
+                ClassFieldGen(cd, (fieldInfo, arrayStart) =>
+                {
+                    // Skip over arrays for now
+                    //if (!fieldInfo.IsArray) {
+                        if (fieldInfo.IsString) {
+                            var strName = fieldInfo.FieldName;
+                            
+                            if (fieldInfo.IsArray) {
+                                var idxKey = $"idx{fieldInfo.Depth}";
+                                strName = $"{fieldInfo.FieldName}[{idxKey}]";
+                                AddLine($"for(int {idxKey} = 0; {idxKey} < {fieldInfo.FieldName}.Length; {idxKey}++)");
+                                StartScope();
+                            }
+                            
+                            if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize ||
+                                fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.RefField  ||
+                                fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
+                                AddLines(
+                                    $"var {fieldInfo.FieldName}Bytes = Encoding.ASCII.GetBytes({strName}).AsSpan();",
+                                    $"{fieldInfo.FieldName}Bytes.CopyTo(buffer.Slice(offset, {fieldInfo.FieldName}Bytes.Length));");
+
+                                if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
+                                    AddLines($"buffer[offset + {fieldInfo.FieldName}Bytes.Length] = 0;",
+                                        $"offset += ({fieldInfo.FieldName}Bytes.Length + 1);");
+                                }
+                                else {
+                                    AddLine($"offset += {fieldInfo.FieldName}Bytes.Length;");
+                                }
+                            }
+                            else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
+                                CreateWriteType($"{strName}.Length", fieldInfo.StringInfo.KeyType,
+                                    fieldInfo.StringInfo.KeyType);
+                                AddLines(
+                                    $"var {fieldInfo.FieldName}Bytes = Encoding.ASCII.GetBytes({strName}).AsSpan();",
+                                    $"{fieldInfo.FieldName}Bytes.CopyTo(buffer.Slice(offset, {fieldInfo.FieldName}Bytes.Length));",
+                                    $"offset += {fieldInfo.FieldName}Bytes.Length;");
+                            }
+
+                            if (fieldInfo.IsArray) {
+                                EndScope();
+                                AddLine();
+                            }
+                        }
+                        else if (arrayStart) {
+                            var idxKey = $"idx{fieldInfo.Depth}";
+                            AddLine($"for(int {idxKey} = 0; {idxKey} < {fieldInfo.FieldName}.Length; {idxKey}++)");
+                        }
+                        else if (!fieldInfo.IsBlock) {
+                            if (fieldInfo.IsArray) {
+                                if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
+                                    CreateWriteType($"({fieldInfo.ArrayInfo.KeyType}){fieldInfo.FieldName}.Length", fieldInfo.ArrayInfo.KeyType);
+                                }
+                                
+                                AddLine($"for(int idx{fieldInfo.Depth} = 0; idx{fieldInfo.Depth} < {fieldInfo.FieldName}.Length; idx{fieldInfo.Depth}++)");
+                                StartScope();
+                            }
+                            
+                            CreateWriteType(fieldInfo.IsArray ? $"{fieldInfo.FieldName}[idx{fieldInfo.Depth}]" : fieldInfo.FieldName, fieldInfo.TypeStr, fieldInfo.IsEnum ? fieldInfo.EnumType : null);
+
+                            if (fieldInfo.IsArray) {
+                                EndScope();
+                            }
+                        }
+                    //}
+                });
+
+                AddLine("return offset;");
             }
         }
 
@@ -353,7 +384,7 @@ namespace Aero.Gen
 
                 if (fieldInfo.IsArray && fieldInfo.IsBlock) {
                     OnField(fieldInfo, true);
-                    
+
                     var subFields = fieldInfo.GetSubFieldsForArrayBlock(SyntaxReceiver,
                         $"{fieldInfo.FieldName}[idx{fieldInfo.Depth}]");
                     foreach (var subField in subFields) {
@@ -595,6 +626,91 @@ namespace Aero.Gen
                         "W = MemoryMarshal.Read<float>(data.Slice(offset + 12, 4))",
                         "};");
                     AddLine($"offset += 16;"); // 4 floats
+                    wasHandled = false;
+                    break;
+
+                default:
+                    AddLine($"// Unhandled type {typeStr}");
+                    wasHandled = false;
+                    break;
+            }
+
+            if (wasHandled) {
+                AddLine($"offset += sizeof({typeStr});");
+            }
+
+            AddLine();
+        }
+
+        public virtual void CreateWriteType(string name, string typeStr, string castType = null)
+        {
+            bool   wasHandled = true;
+            string typeCast   = castType != null ? $"({castType})" : "";
+
+            switch (typeStr) {
+                case "byte":
+                    AddLine($"buffer[offset] = {typeCast}{name};");
+                    break;
+                case "char":
+                    AddLine($"buffer[offset] = {typeCast}((byte){name});");
+                    typeStr = "byte";
+                    break;
+                case "int":
+                    AddLine(
+                        $"BinaryPrimitives.WriteInt32LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "uint":
+                    AddLine(
+                        $"BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "short":
+                    AddLine(
+                        $"BinaryPrimitives.WriteInt16LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "ushort":
+                    AddLine(
+                        $"BinaryPrimitives.WriteUInt16LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "double":
+                    AddLine(
+                        $"BinaryPrimitives.WriteDoubleLittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "float":
+                    AddLine(
+                        $"BinaryPrimitives.WriteSingleLittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "ulong":
+                    AddLine(
+                        $"BinaryPrimitives.WriteUInt64LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "long":
+                    AddLine(
+                        $"BinaryPrimitives.WriteInt64LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+
+                case "Vector2":
+                    AddLines(
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",
+                        "offset += 8;");
+                    wasHandled = false;
+                    break;
+                case "Vector3":
+                    AddLines(
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);",
+                        "offset += 12;");
+                    wasHandled = false;
+                    break;
+                case "Vector4":
+                case "Quaternion":
+                    AddLines(
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 12, sizeof(float)), ref {name}.W);",
+                        "offset += 16;");
                     wasHandled = false;
                     break;
 

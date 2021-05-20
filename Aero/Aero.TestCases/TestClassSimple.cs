@@ -38,7 +38,7 @@ namespace Aero.TestCases
     [Aero]
     public partial class TestCase1Main
     {
-        /*public byte   Byte;
+        public byte   Byte;
         public char   Char;
         public int    IntTest;
         public uint   UintTest;
@@ -89,9 +89,9 @@ namespace Aero.TestCases
         [AeroString]
         public string TestString4;
         
-        public TestSubDataTwo TestSubData3;*/
+        public TestSubDataTwo TestSubData3;
 
-        public byte Byte;
+        public byte Byte2;
         
         [AeroIf(nameof(Byte), 1)]
         public TestSubDataOne TestSubData4;
@@ -106,7 +106,7 @@ namespace Aero.TestCases
             int offset = 1;
             //Byte    = data[0];
             //Char    = (char)data[0];
-            //IntTest = BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, 4));
+            IntTest = BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, 4));
 
             //TestSubData.Byte          = 0;
             //TestSubData2.SubData.Byte = 0;
@@ -124,7 +124,13 @@ namespace Aero.TestCases
             
             data.Slice(offset, data.Length - offset).IndexOf<byte>(0x00);
 
+            var buffer = new Span<byte>();
+            BinaryPrimitives.WriteDoubleLittleEndian(buffer, UintTest);
+
             //Vec2 = MemoryMarshal.Read<Vector2>(data);
+
+            //var strBytes = Encoding.ASCII.GetBytes(TestString).AsSpan();
+            //strBytes.CopyTo(data.Slice(0, strBytes.Length));
         }
     }
 }
