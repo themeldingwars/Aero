@@ -78,10 +78,13 @@ namespace Aero.Gen
                 if (config.Enabled) {
                     // Aero message classes
                     foreach (var cls in snRecv.ClassesToAugment) {
-                        var genv2 = new Genv2(context, config);
+                        var treeRoot = AeroSourceGraphGen.BuildTree(snRecv, cls);
+                        Debug.Write(AeroSourceGraphGen.PrintTree(treeRoot));
+
+                        /*var genv2 = new Genv2(context, config);
                         (string file, string src) = genv2.GenClass(cls);
                         Debug.Write(src);
-                        context.AddSource(file, SourceText.From(src, Encoding.UTF8));
+                        context.AddSource(file, SourceText.From(src, Encoding.UTF8));*/
                     }
                 }
             }
