@@ -285,65 +285,69 @@ namespace Aero.Gen
                 {
                     // Skip over arrays for now
                     //if (!fieldInfo.IsArray) {
-                        if (fieldInfo.IsString) {
-                            var strName = fieldInfo.FieldName;
-                            
-                            if (fieldInfo.IsArray) {
-                                var idxKey = $"idx{fieldInfo.Depth}";
-                                strName = $"{fieldInfo.FieldName}[{idxKey}]";
-                                AddLine($"for(int {idxKey} = 0; {idxKey} < {fieldInfo.FieldName}.Length; {idxKey}++)");
-                                StartScope();
-                            }
-                            
-                            if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize ||
-                                fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.RefField  ||
-                                fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
-                                AddLines(
-                                    $"var {fieldInfo.FieldName}Bytes = Encoding.ASCII.GetBytes({strName}).AsSpan();",
-                                    $"{fieldInfo.FieldName}Bytes.CopyTo(buffer.Slice(offset, {fieldInfo.FieldName}Bytes.Length));");
+                    if (fieldInfo.IsString) {
+                        var strName = fieldInfo.FieldName;
 
-                                if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
-                                    AddLines($"buffer[offset + {fieldInfo.FieldName}Bytes.Length] = 0;",
-                                        $"offset += ({fieldInfo.FieldName}Bytes.Length + 1);");
-                                }
-                                else {
-                                    AddLine($"offset += {fieldInfo.FieldName}Bytes.Length;");
-                                }
-                            }
-                            else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
-                                CreateWriteType($"{strName}.Length", fieldInfo.StringInfo.KeyType,
-                                    fieldInfo.StringInfo.KeyType);
-                                AddLines(
-                                    $"var {fieldInfo.FieldName}Bytes = Encoding.ASCII.GetBytes({strName}).AsSpan();",
-                                    $"{fieldInfo.FieldName}Bytes.CopyTo(buffer.Slice(offset, {fieldInfo.FieldName}Bytes.Length));",
-                                    $"offset += {fieldInfo.FieldName}Bytes.Length;");
-                            }
-
-                            if (fieldInfo.IsArray) {
-                                EndScope();
-                                AddLine();
-                            }
-                        }
-                        else if (arrayStart) {
+                        if (fieldInfo.IsArray) {
                             var idxKey = $"idx{fieldInfo.Depth}";
+                            strName = $"{fieldInfo.FieldName}[{idxKey}]";
                             AddLine($"for(int {idxKey} = 0; {idxKey} < {fieldInfo.FieldName}.Length; {idxKey}++)");
+                            StartScope();
                         }
-                        else if (!fieldInfo.IsBlock) {
-                            if (fieldInfo.IsArray) {
-                                if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
-                                    CreateWriteType($"({fieldInfo.ArrayInfo.KeyType}){fieldInfo.FieldName}.Length", fieldInfo.ArrayInfo.KeyType);
-                                }
-                                
-                                AddLine($"for(int idx{fieldInfo.Depth} = 0; idx{fieldInfo.Depth} < {fieldInfo.FieldName}.Length; idx{fieldInfo.Depth}++)");
-                                StartScope();
-                            }
-                            
-                            CreateWriteType(fieldInfo.IsArray ? $"{fieldInfo.FieldName}[idx{fieldInfo.Depth}]" : fieldInfo.FieldName, fieldInfo.TypeStr, fieldInfo.IsEnum ? fieldInfo.EnumType : null);
 
-                            if (fieldInfo.IsArray) {
-                                EndScope();
+                        if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize ||
+                            fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.RefField  ||
+                            fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
+                            AddLines(
+                                $"var {fieldInfo.FieldName}Bytes = Encoding.ASCII.GetBytes({strName}).AsSpan();",
+                                $"{fieldInfo.FieldName}Bytes.CopyTo(buffer.Slice(offset, {fieldInfo.FieldName}Bytes.Length));");
+
+                            if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
+                                AddLines($"buffer[offset + {fieldInfo.FieldName}Bytes.Length] = 0;",
+                                    $"offset += ({fieldInfo.FieldName}Bytes.Length + 1);");
+                            }
+                            else {
+                                AddLine($"offset += {fieldInfo.FieldName}Bytes.Length;");
                             }
                         }
+                        else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
+                            CreateWriteType($"{strName}.Length", fieldInfo.StringInfo.KeyType,
+                                fieldInfo.StringInfo.KeyType);
+                            AddLines(
+                                $"var {fieldInfo.FieldName}Bytes = Encoding.ASCII.GetBytes({strName}).AsSpan();",
+                                $"{fieldInfo.FieldName}Bytes.CopyTo(buffer.Slice(offset, {fieldInfo.FieldName}Bytes.Length));",
+                                $"offset += {fieldInfo.FieldName}Bytes.Length;");
+                        }
+
+                        if (fieldInfo.IsArray) {
+                            EndScope();
+                            AddLine();
+                        }
+                    }
+                    else if (arrayStart) {
+                        var idxKey = $"idx{fieldInfo.Depth}";
+                        AddLine($"for(int {idxKey} = 0; {idxKey} < {fieldInfo.FieldName}.Length; {idxKey}++)");
+                    }
+                    else if (!fieldInfo.IsBlock) {
+                        if (fieldInfo.IsArray) {
+                            if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
+                                CreateWriteType($"({fieldInfo.ArrayInfo.KeyType}){fieldInfo.FieldName}.Length",
+                                    fieldInfo.ArrayInfo.KeyType);
+                            }
+
+                            AddLine(
+                                $"for(int idx{fieldInfo.Depth} = 0; idx{fieldInfo.Depth} < {fieldInfo.FieldName}.Length; idx{fieldInfo.Depth}++)");
+                            StartScope();
+                        }
+
+                        CreateWriteType(
+                            fieldInfo.IsArray ? $"{fieldInfo.FieldName}[idx{fieldInfo.Depth}]" : fieldInfo.FieldName,
+                            fieldInfo.TypeStr, fieldInfo.IsEnum ? fieldInfo.EnumType : null);
+
+                        if (fieldInfo.IsArray) {
+                            EndScope();
+                        }
+                    }
                     //}
                 });
 
@@ -369,15 +373,16 @@ namespace Aero.Gen
                     $"// {fieldInfo.FieldName}, Type: {fieldInfo.TypeStr}, IsArray: {fieldInfo.IsArray}, IsBlock: {fieldInfo.IsBlock}, Depth: {fieldInfo.Depth}");
                 bool hasIf = fieldInfo.IfStatment != null;
 
+                if (fieldInfo.Depth < lastDepth) {
+                    for (int i = 0; i < lastDepth - fieldInfo.Depth; i++) EndScope();
+                }
+                
                 if (hasIf) {
                     AddLine($"if ({fieldInfo.IfStatment}) ");
                 }
 
                 if (fieldInfo.Depth > lastDepth || (hasIf && !fieldInfo.IsBlock)) {
                     StartScope();
-                }
-                else if (fieldInfo.Depth < lastDepth) {
-                    for (int i = 0; i < lastDepth - fieldInfo.Depth; i++) EndScope();
                 }
 
                 lastDepth = fieldInfo.Depth;
@@ -407,7 +412,6 @@ namespace Aero.Gen
         private void CreateReader(AeroFieldInfo fieldInfo, ref int lastDepth, ref bool closeScope)
         {
             bool hasIf = fieldInfo.IfStatment != null;
-            if (hasIf) AddLine($"if ({fieldInfo.IfStatment})");
 
             {
                 var depthDiff = fieldInfo.Depth - lastDepth;
@@ -416,6 +420,8 @@ namespace Aero.Gen
                         EndScope(true);
                     }
                 }
+                
+                if (hasIf) AddLine($"if ({fieldInfo.IfStatment})");
 
                 //if (closeScope) EndScope();
                 if (fieldInfo.Depth          > lastDepth || (hasIf && !fieldInfo.IsBlock)) StartScope();
@@ -481,7 +487,8 @@ namespace Aero.Gen
                         IsBlock    = false,
                         IsString   = fieldInfo.IsString,
                         ArrayInfo  = fieldInfo.ArrayInfo,
-                        StringInfo = fieldInfo.StringInfo
+                        StringInfo = fieldInfo.StringInfo,
+                        Depth      = fieldInfo.Depth
                     };
                     CreateReader(arrFInfo, ref lastDepth, ref closeScope);
                 }
