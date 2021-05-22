@@ -38,10 +38,10 @@ namespace Aero.Gen
             var sizeOfTypeStr = typeStr == "char" ? "byte" : typeStr;
             var size = typeStr switch
             {
-                "Vector2"    => "8",
-                "Vector3"    => "12",
-                "Vector4"    => "16",
-                "Quaternion" => "16",
+                "System.Numerics.Vector2"    => "8",
+                "System.Numerics.Vector3"    => "12",
+                "System.Numerics.Vector4"    => "16",
+                "System.Numerics.Quaternion" => "16",
                 _            => $"sizeof({sizeOfTypeStr})"
             };
 
@@ -598,7 +598,7 @@ namespace Aero.Gen
                         $"{name} = {typeCast}BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
                     break;
 
-                case "Vector2":
+                case "System.Numerics.Vector2":
                     AddLines($"{name} = new Vector2{{",
                         "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
                         "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4))",
@@ -606,7 +606,7 @@ namespace Aero.Gen
                     AddLine($"offset += 8;"); // 2 floats
                     wasHandled = false;
                     break;
-                case "Vector3":
+                case "System.Numerics.Vector3":
                     AddLines($"{name} = new Vector3{{",
                         "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
                         "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
@@ -615,7 +615,7 @@ namespace Aero.Gen
                     AddLine($"offset += 12;"); // 3 floats
                     wasHandled = false;
                     break;
-                case "Vector4":
+                case "System.Numerics.Vector4":
                     AddLines($"{name} = new Vector4{{",
                         "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
                         "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
@@ -625,7 +625,7 @@ namespace Aero.Gen
                     AddLine($"offset += 16;"); // 4 floats
                     wasHandled = false;
                     break;
-                case "Quaternion":
+                case "System.Numerics.Quaternion":
                     AddLines($"{name} = new Quaternion{{",
                         "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
                         "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
@@ -695,14 +695,14 @@ namespace Aero.Gen
                         $"BinaryPrimitives.WriteInt64LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
                     break;
 
-                case "Vector2":
+                case "System.Numerics.Vector2":
                     AddLines(
                         $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
                         $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",
                         "offset += 8;");
                     wasHandled = false;
                     break;
-                case "Vector3":
+                case "System.Numerics.Vector3":
                     AddLines(
                         $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
                         $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",
@@ -710,8 +710,8 @@ namespace Aero.Gen
                         "offset += 12;");
                     wasHandled = false;
                     break;
-                case "Vector4":
-                case "Quaternion":
+                case "System.Numerics.Vector4":
+                case "System.Numerics.Quaternion":
                     AddLines(
                         $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
                         $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",

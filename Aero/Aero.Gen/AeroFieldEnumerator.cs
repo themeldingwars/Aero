@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Aero.Gen.Attributes;
@@ -112,7 +113,7 @@ namespace Aero.Gen
                 CurrentField    = field,
                 FieldName       = parentInfo != null ? $"{parentInfo.FieldName}.{fieldName}" : fieldName,
                 IsArray         = AgUtils.GetFieldTypeStr(field)?.EndsWith("[]") ?? false,
-                TypeStr         = AgUtils.GetFieldTypeStr(field)?.TrimEnd('[', ']'),
+                TypeStr         = typeInfo?.ToString()?.TrimEnd('[', ']'),
                 IfStatment      = null,
                 IsFlags         = typeInfo?.GetAttributes().OfType<FlagsAttribute>() != null,
                 IsEnum          = typeInfo?.TypeKind                                 == TypeKind.Enum,
@@ -152,7 +153,8 @@ namespace Aero.Gen
                 return null;
             }
 
-            var fieldType = fieldInfo.IsArray ? fieldInfo.TypeStr : field.Declaration.Type.ToString();
+            var fieldType = fieldInfo.TypeStr;
+            Debug.WriteLine(fieldType);
             var aeroBlock = SyntaxReceiver.GetAeroBLockOfName(null, fieldType);
             fieldInfo.IsBlock = aeroBlock != null;
 
@@ -164,7 +166,7 @@ namespace Aero.Gen
                     (typeInfo is IArrayTypeSymbol ats && ats.ElementType.TypeKind == TypeKind.Struct &&
                      ats.ElementType.SpecialType == SpecialType.None && !fieldInfo.IsBlock)) {
                     SyntaxReceiver.Context.ReportDiagnostic(Diagnostic.Create(
-                        AeroGenerator.StructNotMarkedAsAeroBlockError, field.GetLocation(), fieldName, typeInfo.Name));
+                        AeroGenerator.StructNotMarkedAsAeroBlockError, field.GetLocation(), fieldName, fieldType));
                     return null;
                 }
             }

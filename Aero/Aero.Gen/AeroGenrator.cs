@@ -60,7 +60,7 @@ namespace Aero.Gen
     #endregion
 
         // These types have special case handlers to be treated like simpler value types
-        public static readonly string[] SpecialCasesTypes = new[] { "vector2", "vector3", "vector4", "quaternion" };
+        public static readonly string[] SpecialCasesTypes = new[] { "system.numerics.vector2", "system.numerics.vector3", "system.numerics.vector4", "system.numerics.quaternion" };
 
         public void Initialize(GeneratorInitializationContext context)
         {
