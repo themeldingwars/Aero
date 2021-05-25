@@ -59,6 +59,12 @@ public class Test2
     {
 
         [AeroArray(2)]
+        public TestSubDataOne[] ArrayTestTest;
+
+        [AeroArray(4)]
+        [AeroString(9)] public string[] TestString;
+
+        [AeroArray(2)]
         public Vector2[] Vector2Test;
 
         public Vector2 Vec2;

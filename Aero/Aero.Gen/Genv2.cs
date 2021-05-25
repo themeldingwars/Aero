@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Drawing;
+using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -52,7 +54,7 @@ namespace Aero.Gen
         public class AeroTypeHandler
         {
             public int                          Size = 0;
-            public Func<string, string, string, string> Reader;
+            public Func<string, string, string> Reader;
             public Func<string, string, string, string> Writer;
         }
 
@@ -62,7 +64,7 @@ namespace Aero.Gen
                 "byte", new AeroTypeHandler
                 {
                     Size   = 1,
-                    Reader = (name, typeStr, typeCast) => $"{name} = {typeCast}data[offset];",
+                    Reader = (name, typeCast) => $"{name} = {typeCast}data[offset];",
                     Writer = (name, typeStr, typeCast) => $"buffer[offset] = {typeCast}{name};",
                 }
             },
@@ -70,7 +72,7 @@ namespace Aero.Gen
                 "char", new AeroTypeHandler
                 {
                     Size   = 1,
-                    Reader = (name, typeStr, typeCast) => $"{name} = ({typeCast}(char)data[offset]);",
+                    Reader = (name, typeCast) => $"{name} = ({typeCast}(char)data[offset]);",
                     Writer = (name, typeStr, typeCast) => $"buffer[offset] = {typeCast}((byte){name});",
                 }
             },
@@ -78,7 +80,7 @@ namespace Aero.Gen
                 "int", new AeroTypeHandler
                 {
                     Size   = 4,
-                    Reader = (name, typeStr, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, 4));",
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, 4));",
                     Writer = (name, typeStr, typeCast) => $"BinaryPrimitives.WriteInt32LittleEndian(buffer.Slice(offset, 4), {name});"
                 }
             },
@@ -86,7 +88,7 @@ namespace Aero.Gen
                 "uint", new AeroTypeHandler
                 {
                     Size   = 4,
-                    Reader = (name, typeStr, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(offset, 4));",
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(offset, 4));",
                     Writer = (name, typeStr, typeCast) => $"BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(offset, 4), {name});"
                 }
             },
@@ -94,7 +96,7 @@ namespace Aero.Gen
                 "short", new AeroTypeHandler
                 {
                     Size   = 2,
-                    Reader = (name, typeStr, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadInt16LittleEndian(data.Slice(offset, 2));",
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadInt16LittleEndian(data.Slice(offset, 2));",
                     Writer = (name, typeStr, typeCast) => $"BinaryPrimitives.WriteInt16LittleEndian(buffer.Slice(offset, 2), {name});"
                 }
             },
@@ -102,15 +104,15 @@ namespace Aero.Gen
                 "ushort", new AeroTypeHandler
                 {
                     Size   = 2,
-                    Reader = (name, typeStr, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadInt16LittleEndian(data.Slice(offset, 2));",
-                    Writer = (name, typeStr, typeCast) => $"BinaryPrimitives.WriteInt16LittleEndian(buffer.Slice(offset, 2), {name});"
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(offset, 2));",
+                    Writer = (name, typeStr, typeCast) => $"BinaryPrimitives.WriteUInt16LittleEndian(buffer.Slice(offset, 2), {name});"
                 }
             },
             {
                 "long", new AeroTypeHandler
                 {
                     Size   = 8,
-                    Reader = (name, typeStr, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, 8));",
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, 8));",
                     Writer = (name, typeStr, typeCast) => $"BinaryPrimitives.WriteInt64LittleEndian(buffer.Slice(offset, 8), {name});"
                 }
             },
@@ -118,15 +120,15 @@ namespace Aero.Gen
                 "ulong", new AeroTypeHandler
                 {
                     Size   = 8,
-                    Reader = (name, typeStr, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, 8));",
-                    Writer = (name, typeStr, typeCast) => $"BinaryPrimitives.WriteInt64LittleEndian(buffer.Slice(offset, 8), {name});"
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadUInt64LittleEndian(data.Slice(offset, 8));",
+                    Writer = (name, typeStr, typeCast) => $"BinaryPrimitives.WriteUInt64LittleEndian(buffer.Slice(offset, 8), {name});"
                 }
             },
             {
                 "float", new AeroTypeHandler
                 {
                     Size   = 4,
-                    Reader = (name, typeStr, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadSingleLittleEndian(data.Slice(offset, 4));",
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadSingleLittleEndian(data.Slice(offset, 4));",
                     Writer = (name, typeStr, typeCast) => $"BinaryPrimitives.WriteSingleLittleEndian(buffer.Slice(offset, 4), {name});"
                 }
             },
@@ -134,7 +136,7 @@ namespace Aero.Gen
                 "double", new AeroTypeHandler
                 {
                     Size   = 8,
-                    Reader = (name, typeStr, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(offset, 8));",
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(offset, 8));",
                     Writer = (name, typeStr, typeCast) => $"BinaryPrimitives.WriteDoubleLittleEndian(buffer.Slice(offset, 8), {name});"
                 }
             },
@@ -142,7 +144,7 @@ namespace Aero.Gen
                 "vector2", new AeroTypeHandler
                 {
                     Size   = 8,
-                    Reader = (name, typeStr, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
+                    Reader = (name, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
                                                                          $"{name}.Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4));",
                     Writer = (name, typeStr, typeCast) => $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);" +
                                                                          $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);"
@@ -152,9 +154,9 @@ namespace Aero.Gen
                 "vector3", new AeroTypeHandler
                 {
                     Size   = 12,
-                    Reader = (name, typeStr, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
+                    Reader = (name, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
                                                           $"{name}.Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4));" +
-                                                          $"{name}.Z = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4));",
+                                                          $"{name}.Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4));",
                     Writer = (name, typeStr, typeCast) => $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);" +
                                                           $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);" +
                                                           $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);"
@@ -164,7 +166,7 @@ namespace Aero.Gen
                 "vector4", new AeroTypeHandler
                 {
                     Size   = 16,
-                    Reader = (name, typeStr, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
+                    Reader = (name, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
                                                           $"{name}.Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4));" +
                                                           $"{name}.Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4));" +
                                                           $"{name}.W = MemoryMarshal.Read<float>(data.Slice(offset + 12, 4));",
@@ -178,11 +180,21 @@ namespace Aero.Gen
                 "quaternion", new AeroTypeHandler
                 {
                     Size   = 16,
-                    Reader = (name, typeStr, typeCast) => TypeHandlers["vector4"].Reader(name, typeStr, typeCast),
+                    Reader = (name, typeCast) => TypeHandlers["vector4"].Reader(name, typeCast),
                     Writer = (name, typeStr, typeCast) => TypeHandlers["vector4"].Writer(name, typeStr, typeCast)
                 }
             }
         };
+
+        public void AddReader(string name, string typeStr, string castTypeStr = null)
+        {
+            if (TypeHandlers.TryGetValue(typeStr.ToLower(), out AeroTypeHandler handler)) {
+                var castedTypeStr = castTypeStr != null ? $"({castTypeStr})" : "";
+                AddLine($"{handler.Reader(name, castedTypeStr)}");
+                AddLine($"offset += {handler.Size};");
+                AddLine();
+            }
+        }
 
     #region Code adding functions
 
@@ -308,6 +320,24 @@ namespace Aero.Gen
                 using (Class(AgUtils.GetClassName(cd))) {
                     if (Config.DiagLogging) AddDiagBoilerplate();
 
+                #if DEBUG
+                    AddLine("/*");
+                    var treeRootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                    AddLine(AeroSourceGraphGen.PrintTree(treeRootNode));
+                    AddLine("*/");
+                #endif
+
+                    CreateReaderV2(cd);
+
+                    using (Function("public int Pack(Span<byte> data)")) {
+                        AddLine("return 0;");
+                    }
+                    
+                    using (Function("public int GetPackedSize()")) {
+                        AddLine("return 0;");
+                    }
+
+                    /*
                     CreateReader(cd);
                     AddLine();
 
@@ -316,6 +346,7 @@ namespace Aero.Gen
 
                     CreateWriter(cd);
                     AddLine();
+                    */
                 }
             }
 
@@ -334,6 +365,160 @@ namespace Aero.Gen
 
         public virtual void AddDiagLog(string msg) => AddLine(@$"LogDiag($""{msg}"");");
 
+        public virtual void CreateReaderV2(ClassDeclarationSyntax cd)
+        {
+            using (Function("public int Unpack(ReadOnlySpan<byte> data)")) {
+                AddLine("int offset = 0;");
+                AddLine();
+                
+                CreateLogicFlow(cd, 
+                preNode: node =>
+                {
+                    if (node is AeroArrayNode arrayNode) {
+                        CreateForFromNode(arrayNode);
+                    }
+                },
+                onNode: node =>
+                {
+                    if (node is AeroFieldNode fieldNode) {
+                        AddReader(fieldNode.GetFullName(),
+                            (fieldNode.IsEnum ? fieldNode.EnumStr : fieldNode.TypeStr).ToLower(),
+                            fieldNode.IsEnum ? fieldNode.TypeStr : null);
+                    }
+                    else if (node is AeroStringNode stringNode) {
+                        CreateStringReader(stringNode, node);
+                    }
+                });
+                
+                AddLine("return offset;");
+            }
+        }
+
+        private void CreateStringReader(AeroStringNode stringNode, AeroNode node)
+        {
+            var readStringCall = "Encoding.UTF8.GetString";
+            var lenName        = $"{stringNode.Name}Len";
+
+            switch (stringNode.Mode) {
+                case AeroStringNode.Modes.Ref:
+                    AddLines($"{node.GetFullName()} = {readStringCall}(data.Slice(offset, {stringNode.RefFieldName}));",
+                        $"offset += {stringNode.RefFieldName};");
+                    break;
+                case AeroStringNode.Modes.LenTypePrefixed:
+                    if (TypeHandlers.TryGetValue(stringNode.PrefixTypeStr.ToLower(), out AeroTypeHandler handler)) {
+                        var sizeOfKey = handler.Size;
+                        AddLines($"{stringNode.PrefixTypeStr} {handler.Reader(lenName, null)}",
+                            $"offset += {sizeOfKey};",
+                            "",
+                            $"{node.GetFullName()} = {readStringCall}(data.Slice(offset, {lenName}));",
+                            $"offset += {lenName};");
+                    }
+
+                    break;
+                case AeroStringNode.Modes.Fixed:
+                    AddLines($"{node.GetFullName()} = {readStringCall}(data.Slice(offset, {stringNode.Length}));",
+                        $"offset += {stringNode.Length};");
+                    break;
+                case AeroStringNode.Modes.NullTerminated:
+                    var reachedEndName = $"{stringNode.Name}{stringNode.Depth}_ReachedEndOfSpan";
+                    AddLines($"int {lenName} = data.Slice(offset, data.Length - offset).IndexOf<byte>(0x00);",
+                        $"bool {reachedEndName} = {lenName} == -1;",
+                        $"{lenName} = {reachedEndName} ? (data.Length - offset) : {lenName};",
+                        $"{node.GetFullName()} = {readStringCall}(data.Slice(offset, {lenName}));",
+                        $"offset += {reachedEndName} ? {lenName} : ({lenName} + 1);");
+                    break;
+            }
+        }
+
+        private void CreateForFromNode(AeroArrayNode arrayNode, bool createArray = true)
+        {
+            var idxName      = $"idx{arrayNode.Depth}";
+            var firstSubNode = arrayNode.Nodes.FirstOrDefault(x => x is AeroFieldNode or AeroBlockNode or AeroStringNode);
+
+            switch (arrayNode.Mode) {
+                case AeroArrayNode.Modes.Ref:
+                    if (createArray) {
+                        AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{arrayNode.RefFieldName}];");
+                    }
+
+                    AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.RefFieldName}; {idxName}++)");
+                    break;
+                case AeroArrayNode.Modes.LenTypePrefixed:
+                    var prefixName = $"array{arrayNode.Length}Len";
+                    if (TypeHandlers.TryGetValue(arrayNode.PrefixTypeStr, out AeroTypeHandler handler)) {
+                        AddLine($"var {handler.Reader(prefixName, null)}");
+                        AddLine($"offset += {handler.Size};");
+                        AddLine();
+
+                        if (createArray) {
+                            AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{prefixName}];");
+                        }
+                        AddLine($"for (int {idxName} = 0; {idxName} < {prefixName}; {idxName}++)");
+                    }
+                    else {
+                        AddLine($"// Oh shit something went wrong and I couldn't read a type of {arrayNode.PrefixTypeStr} :<");
+                    }
+
+                    break;
+                case AeroArrayNode.Modes.Fixed:
+                    if (createArray) {
+                        AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{arrayNode.Length}];");
+                    }
+                    AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.Length}; {idxName}++)");
+                    break;
+            }
+        }
+
+        // Boiler plate code for creating the logic flow
+        private void CreateLogicFlow(ClassDeclarationSyntax cd, Action<AeroNode> preNode = null, Action<AeroNode> onNode = null, Action<AeroNode> postNode = null)
+        {
+            var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+
+            var lastDepth = 0;
+            var idx       = 0;
+            AeroSourceGraphGen.WalkTree(rootNode, node =>
+            {
+                if (node.IsRoot) return;
+                
+                if (lastDepth > node.Depth) {
+                    for (int i = 0; i < lastDepth - node.Depth; i++) {
+                        EndScope();
+                        AddLine();
+                    }
+                }
+
+                if (lastDepth < node.Depth) StartScope();
+                
+                if (node is AeroArrayNode aan) {
+                    AddLine($"// Array {aan.Mode}");
+                }
+                
+                preNode?.Invoke(node);
+                
+                if (node is AeroIfNode ain) {
+                    AddLine($"if ({ain.Statement})");
+                }
+
+                if (node is AeroBlockNode abn) {
+                    AddLine($"// Block {abn.Name}, Type: {abn.TypeStr}");
+                }
+
+                if (node is AeroFieldNode afn) {
+                    AddLine($"// Field: {afn.Name}, Type: {afn.TypeStr}, enum type: {afn.EnumStr}");
+                }
+
+                onNode?.Invoke(node);
+                postNode?.Invoke(node);
+
+                lastDepth = node.Depth;
+                idx++;
+            });
+            
+            for (int i = 0; i < lastDepth; i++) {
+                EndScope();
+            }
+        }
+        
         public virtual void CreateReader(ClassDeclarationSyntax cd)
         {
             using (Function("public int Unpack(ReadOnlySpan<byte> data)")) {

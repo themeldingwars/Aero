@@ -81,10 +81,13 @@ namespace Aero.Gen
                         var treeRoot = AeroSourceGraphGen.BuildTree(snRecv, cls);
                         Debug.Write(AeroSourceGraphGen.PrintTree(treeRoot));
 
-                        /*var genv2 = new Genv2(context, config);
+                        var genv2 = new Genv2(context, config);
                         (string file, string src) = genv2.GenClass(cls);
-                        Debug.Write(src);
-                        context.AddSource(file, SourceText.From(src, Encoding.UTF8));*/
+                        //Debug.Write(src);
+                        var name = Path.GetFileNameWithoutExtension(file);
+                        File.WriteAllText($"I:/{name}.cs", src);
+                        
+                        context.AddSource(file, SourceText.From(src, Encoding.UTF8));
                     }
                 }
             }
