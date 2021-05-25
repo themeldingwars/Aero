@@ -36,21 +36,6 @@ namespace Aero.Gen
             UsingsToAdd.Add("System.Numerics");
         }
 
-        private string GetTypeSize(string typeStr)
-        {
-            var sizeOfTypeStr = typeStr == "char" ? "byte" : typeStr;
-            var size = typeStr switch
-            {
-                "Vector2"    => "8",
-                "Vector3"    => "12",
-                "Vector4"    => "16",
-                "Quaternion" => "16",
-                _            => $"sizeof({sizeOfTypeStr})"
-            };
-
-            return size;
-        }
-
         public class AeroTypeHandler
         {
             public int                          Size = 0;
@@ -196,6 +181,15 @@ namespace Aero.Gen
             }
         }
 
+        public static int GetTypeSize(string typeStr)
+        {
+            if (TypeHandlers.TryGetValue(typeStr.ToLower(), out AeroTypeHandler handler)) {
+                return handler.Size;
+            }
+
+            return -1;
+        }
+
     #region Code adding functions
 
         protected static int TabSpaces = 4;
@@ -328,12 +322,12 @@ namespace Aero.Gen
                 #endif
 
                     CreateReaderV2(cd);
-
-                    using (Function("public int Pack(Span<byte> data)")) {
-                        AddLine("return 0;");
-                    }
+                    AddLine();
                     
-                    using (Function("public int GetPackedSize()")) {
+                    CreateGetPackedSizeV2(cd);
+                    AddLine();
+                    
+                    using (Function("public int Pack(Span<byte> data)")) {
                         AddLine("return 0;");
                     }
 
@@ -393,6 +387,121 @@ namespace Aero.Gen
                 AddLine("return offset;");
             }
         }
+        
+        public virtual void CreateGetPackedSizeV2(ClassDeclarationSyntax cd)
+        {
+            using (Function("public int GetPackedSize()")) {
+                AddLine("int offset = 0;");
+                AddLine();
+                
+                CreateLogicFlow(cd, 
+                    preNode: node =>
+                    {
+                        if (node is AeroArrayNode arrayNode && !arrayNode.IsFixedSize()) {
+                            var idxName = $"idx{arrayNode.Depth}";
+                                AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");
+                        }
+                    },
+                    onNode: node =>
+                    {
+                        if (node is AeroFieldNode fieldNode) {
+                            if (TypeHandlers.TryGetValue(fieldNode.TypeStr, out AeroTypeHandler handler)) {
+                                if (!node.Parent.IsRoot && node.Parent is AeroArrayNode farrayNode && farrayNode.Mode == AeroArrayNode.Modes.Fixed) {
+                                    AddLine($"offset += {handler.Size * farrayNode.Length}; // array fixed");
+                                }
+                                else {
+                                    AddLine($"offset += {handler.Size}; // field size");
+                                }
+                            }
+                            else {
+                                AddLine($"// {fieldNode.GetFullName()} had unknown type {fieldNode.TypeStr}");
+                            }
+                        }
+                        else if (node is AeroStringNode stringNode) {
+                            int length = 0;
+                            if (stringNode.Mode == AeroStringNode.Modes.LenTypePrefixed) {
+                                length = GetTypeSize(stringNode.PrefixTypeStr);
+                            }
+                            else if (stringNode.Mode == AeroStringNode.Modes.NullTerminated) {
+                                length = 1;
+                            }
+
+                            if (stringNode.Mode == AeroStringNode.Modes.Fixed) {
+                                AddLine($"offset += {stringNode.GetSize()}; // string");
+                            }
+                            else {
+                                AddLine($"offset += {length} + {stringNode.GetFullName()}.Length; // string");
+                            }
+                        }
+                        else if (node is AeroArrayNode arrayNode && arrayNode.IsFixedSize()) {
+                            var prefixLen = arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed
+                                ? GetTypeSize(arrayNode.PrefixTypeStr)
+                                : 0;
+                            
+                            AddLine($"offset += ({prefixLen}) + ({arrayNode.GetSize()} * {arrayNode.GetFullName()}.Length); // array non fixed {node.Name}");
+                            node.Nodes.Clear();
+                        }
+                    });
+
+                AddLine("return offset;");
+            }
+        }
+        
+        /*public virtual void CreateGetPackedSizeV2(ClassDeclarationSyntax cd)
+        {
+            using (Function("public int GetPackedSize()")) {
+                AddLine("int offset = 0;");
+                AddLine();
+
+                AeroNode lastNode     = null;
+                int      sizeCombined = 0;
+                CreateLogicFlow(cd, 
+                    preNode: node =>
+                    {
+                        if (node is AeroArrayNode arrayNode) {
+                            //CreateForFromNode(arrayNode);
+                        }
+                    },
+                    onNode: node =>
+                    {
+                        var wasNonFixedSize = false;
+                        if (node is AeroFieldNode fieldNode) {
+                            if (TypeHandlers.TryGetValue(fieldNode.TypeStr, out AeroTypeHandler handler)) {
+                                if (!node.Parent.IsRoot && node.Parent is AeroArrayNode farrayNode && farrayNode.Mode == AeroArrayNode.Modes.Fixed) {
+                                    sizeCombined += handler.Size * farrayNode.Length;
+                                }
+                                else {
+                                    sizeCombined += handler.Size;
+                                }
+                            }
+                            else {
+                                AddLine($"// {fieldNode.GetFullName()} had unknown type {fieldNode.TypeStr}");
+                            }
+                        }
+                        else if (node is AeroStringNode stringNode) {
+                            AddLine($"offset += {stringNode.GetFullName()}.Length; // string");
+                            wasNonFixedSize = true;
+                        }
+                        else if (node is AeroArrayNode arrayNode && arrayNode.Mode != AeroArrayNode.Modes.Fixed) {
+                            AddLine($"offset += {arrayNode.GetFullName()}.Length; // array non fixed");
+                            wasNonFixedSize = true;
+                        }
+
+                        if (wasNonFixedSize) {
+                            AddLine($"offset += {sizeCombined}; // combined size");
+                            sizeCombined = 0;
+                        }
+
+                        lastNode = node;
+                    });
+
+                if (sizeCombined > 0) {
+                    AddLine($"offset += {sizeCombined};");
+                }
+                
+                AddLine("return offset;");
+            }
+        }*/
 
         private void CreateStringReader(AeroStringNode stringNode, AeroNode node)
         {

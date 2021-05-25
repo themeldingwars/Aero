@@ -28,10 +28,15 @@ namespace Aero.Gen
 
             void ClimbUp(AeroNode node, bool isFirstNode)
             {
-                if (node != null && !node.IsRoot) {
+                if (node != null && !node.IsRoot && node is not AeroIfNode) {
                     if (node?.Parent is AeroBlockNode blockNode && blockNode?.Parent is AeroArrayNode arrayNode) {
                         names.Add($"{blockNode.Name}[idx{arrayNode.Depth}]{node.Name}");
                         ClimbUp(arrayNode, false);
+                        return;
+                    }
+                    else if (isFirstNode && node is AeroArrayNode arrayNode3) {
+                        names.Add($"{arrayNode3.Nodes.First().Name}");
+                        ClimbUp(node.Parent, false);
                         return;
                     }
                     else if (node.Name != null) {
@@ -47,6 +52,10 @@ namespace Aero.Gen
                 }
             }
         }
+
+        public virtual bool IsFixedSize() => false;
+
+        public virtual int GetSize() => -1;
     }
 
     public class AeroFieldNode : AeroNode
@@ -54,6 +63,9 @@ namespace Aero.Gen
         public string EnumStr;
         public bool   IsEnum;
         public bool   IsFlags;
+
+        public override bool IsFixedSize() => true;
+        public override int  GetSize()     => Genv2.GetTypeSize(TypeStr);
     }
 
     public class AeroArrayNode : AeroNode
@@ -69,16 +81,47 @@ namespace Aero.Gen
         public int    Length;
         public string RefFieldName;
         public string PrefixTypeStr;
+        
+        public override bool IsFixedSize() => GetSize() != -1;
+        
+        public override int GetSize()
+        {
+            int combinedSize = 0;
+            foreach (var node in Nodes) {
+                if (node.GetSize() == -1) {
+                    return -1;
+                }
+                combinedSize += node.GetSize();
+            }
+
+            return combinedSize;
+        }
     }
 
     public class AeroIfNode : AeroNode
     {
         public string           Statement;
         public List<AeroIfInfo> IfInfos;
+
+        public override bool IsFixedSize() => false;
+
+        public virtual int GetSize() => -1;
     }
 
     public class AeroBlockNode : AeroNode
     {
+        public override int GetSize()
+        {
+            int combinedSize = 0;
+            foreach (var node in Nodes) {
+                if (node.GetSize() == -1) {
+                    return -1;
+                }
+                combinedSize += node.GetSize();
+            }
+
+            return combinedSize;
+        }
     }
 
     public class AeroStringNode : AeroNode
@@ -95,6 +138,17 @@ namespace Aero.Gen
         public int    Length;
         public string RefFieldName;
         public string PrefixTypeStr;
+
+        public override bool IsFixedSize() => Mode == Modes.Fixed;
+
+        public override int GetSize()
+        {
+            if (Mode == Modes.Fixed) {
+                return Length;
+            }
+
+            return -1;
+        }
     }
 
     public static class AeroSourceGraphGen
