@@ -110,6 +110,8 @@ namespace Aero.Gen
 
     public class AeroBlockNode : AeroNode
     {
+        public override bool IsFixedSize() => GetSize() != -1;
+        
         public override int GetSize()
         {
             int combinedSize = 0;
@@ -174,7 +176,7 @@ namespace Aero.Gen
                 var fieldName = AgUtils.GetFieldName(field);
                 var sModel    = snr.Context.Compilation.GetSemanticModel(field.SyntaxTree);
                 var typeInfo  = sModel.GetTypeInfo(field.Declaration.Type).Type;
-                var typeStr   = AgUtils.GetFieldTypeStr(field);
+                var typeStr   = typeInfo?.ToString();
 
                 // Ifs
                 var ifAttrs = AgUtils.GetAeroIfAttributes(field, sModel);
@@ -211,7 +213,7 @@ namespace Aero.Gen
                 // Blocks
                 var fieldType = currentNode is AeroArrayNode
                     ? typeStr.TrimEnd(new[] {'[', ']'})
-                    : field.Declaration.Type.ToString();
+                    : typeStr;
                 var aeroBlock      = snr.GetAeroBLockOfName(null, fieldType);
                 var stringAttrData = AgUtils.GetStringInfo(field);
 

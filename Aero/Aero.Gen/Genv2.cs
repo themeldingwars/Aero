@@ -126,7 +126,7 @@ namespace Aero.Gen
                 }
             },
             {
-                "vector2", new AeroTypeHandler
+                "system.numerics.vector2", new AeroTypeHandler
                 {
                     Size   = 8,
                     Reader = (name, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
@@ -136,7 +136,7 @@ namespace Aero.Gen
                 }
             },
             {
-                "vector3", new AeroTypeHandler
+                "system.numerics.vector3", new AeroTypeHandler
                 {
                     Size   = 12,
                     Reader = (name, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
@@ -148,7 +148,7 @@ namespace Aero.Gen
                 }
             },
             {
-                "vector4", new AeroTypeHandler
+                "system.numerics.vector4", new AeroTypeHandler
                 {
                     Size   = 16,
                     Reader = (name, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
@@ -162,11 +162,11 @@ namespace Aero.Gen
                 }
             },
             {
-                "quaternion", new AeroTypeHandler
+                "system.numerics.quaternion", new AeroTypeHandler
                 {
                     Size   = 16,
-                    Reader = (name, typeCast) => TypeHandlers["vector4"].Reader(name, typeCast),
-                    Writer = (name, typeStr, typeCast) => TypeHandlers["vector4"].Writer(name, typeStr, typeCast)
+                    Reader = (name, typeCast) => TypeHandlers["system.numerics.vector4"].Reader(name, typeCast),
+                    Writer = (name, typeStr, typeCast) => TypeHandlers["system.numerics.vector4"].Writer(name, typeStr, typeCast)
                 }
             }
         };
@@ -394,6 +394,7 @@ namespace Aero.Gen
                 AddLine("int offset = 0;");
                 AddLine();
                 
+                var combinedSize = 0;
                 CreateLogicFlow(cd, 
                     preNode: node =>
                     {
@@ -401,11 +402,23 @@ namespace Aero.Gen
                             var idxName = $"idx{arrayNode.Depth}";
                                 AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");
                         }
+                        
+                        /*
+                        if (node.IsFixedSize()) {
+                            combinedSize += node.GetSize();
+                        }
+
+                        if (combinedSize > 0 && node is AeroIfNode) {
+                            AddLine($"offset += {combinedSize}; // combined size");
+                            combinedSize = 0;
+                        }
+                        */
                     },
                     onNode: node =>
                     {
                         if (node is AeroFieldNode fieldNode) {
-                            if (TypeHandlers.TryGetValue(fieldNode.TypeStr, out AeroTypeHandler handler)) {
+                            var typeStr = fieldNode.IsEnum ? fieldNode.EnumStr.ToLower() : fieldNode.TypeStr.ToLower();
+                            if (TypeHandlers.TryGetValue(typeStr, out AeroTypeHandler handler)) {
                                 if (!node.Parent.IsRoot && node.Parent is AeroArrayNode farrayNode && farrayNode.Mode == AeroArrayNode.Modes.Fixed) {
                                     AddLine($"offset += {handler.Size * farrayNode.Length}; // array fixed");
                                 }
@@ -414,7 +427,7 @@ namespace Aero.Gen
                                 }
                             }
                             else {
-                                AddLine($"// {fieldNode.GetFullName()} had unknown type {fieldNode.TypeStr}");
+                                AddLine($"// {fieldNode.GetFullName()} had unknown type {typeStr}");
                             }
                         }
                         else if (node is AeroStringNode stringNode) {
@@ -439,6 +452,10 @@ namespace Aero.Gen
                                 : 0;
                             
                             AddLine($"offset += ({prefixLen}) + ({arrayNode.GetSize()} * {arrayNode.GetFullName()}.Length); // array non fixed {node.Name}");
+                            node.Nodes.Clear();
+                        }
+                        else if (node is AeroBlockNode && node.IsFixedSize()) {
+                            AddLine($"offset += {node.GetSize()}; // Fixed size block");
                             node.Nodes.Clear();
                         }
                     });
