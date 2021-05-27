@@ -23,7 +23,7 @@ namespace Aero.Gen
             ClimbUp(this, true);
             names.Reverse();
 
-            var fullName = string.Join('.', names);
+            var fullName = string.Join(".", names);
             return fullName;
 
             void ClimbUp(AeroNode node, bool isFirstNode)
@@ -47,7 +47,9 @@ namespace Aero.Gen
                             names.Add(node.Name);
                         }
                     }
+                }
 
+                if (node != null && !node.IsRoot) {
                     ClimbUp(node.Parent, false);
                 }
             }
@@ -155,14 +157,19 @@ namespace Aero.Gen
 
     public static class AeroSourceGraphGen
     {
+        public class BuildTreeState
+        {
+            public Dictionary<string, string> CastedNameToType = new ();
+        }
+        
         public static AeroNode BuildTree(AeroSyntaxReceiver snr, ClassDeclarationSyntax cls) =>
             BuildTree(snr, AgUtils.GetClassFields(cls));
 
         public static AeroNode BuildTree(AeroSyntaxReceiver snr, StructDeclarationSyntax sls) =>
             BuildTree(snr, AgUtils.GetStructFields(sls));
 
-        public static AeroNode BuildTree(AeroSyntaxReceiver snr, IEnumerable<FieldDeclarationSyntax> fields,
-                                         AeroNode           parent = null)
+        public static AeroNode BuildTree(AeroSyntaxReceiver snr,           IEnumerable<FieldDeclarationSyntax> fields,
+                                         AeroNode           parent = null, BuildTreeState state = null)
         {
             var rootNode = new AeroNode
             {
@@ -170,6 +177,8 @@ namespace Aero.Gen
                 Depth  = parent?.Depth ?? -1,
                 Parent = parent
             };
+
+            state ??= new BuildTreeState();
             AeroNode currentNode = rootNode;
 
             foreach (var field in fields) {
@@ -181,9 +190,24 @@ namespace Aero.Gen
                 // Ifs
                 var ifAttrs = AgUtils.GetAeroIfAttributes(field, sModel);
                 if (ifAttrs.Count > 0) {
+
                     var ifNode = new AeroIfNode
                     {
-                        Statement = string.Join(" && ", ifAttrs.Select(x => x.GetIfStr())),
+                        Statement = string.Join(" && ", ifAttrs.Select(x =>
+                        {
+                            if (state.CastedNameToType.TryGetValue($"{currentNode.GetFullName()}.{x.Key}", out string typeName)) {
+                                x.Values = x.Values.Select(y =>
+                                {
+                                    var splitVals = y.Split('.');
+                                    if (splitVals.Length > 0) {
+                                        return $"{typeName}.{splitVals.Last()}";
+                                    }
+
+                                    return y;
+                                }).ToArray();
+                            }
+                            return x.GetIfStr(currentNode.GetFullName());
+                        })),
                         IfInfos   = ifAttrs.ToList(),
                         Parent    = currentNode,
                         Depth     = currentNode.Depth + 1
@@ -227,7 +251,7 @@ namespace Aero.Gen
                     };
 
                     foreach (var structField in AgUtils.GetStructFields(aeroBlock)) {
-                        var subField = BuildTree(snr, new[] {structField}, aeroBlockNode);
+                        var subField = BuildTree(snr, new[] {structField}, aeroBlockNode, state);
                         aeroBlockNode.Nodes.Add(subField);
                     }
 
@@ -267,6 +291,11 @@ namespace Aero.Gen
                             IsFlags = typeInfo?.GetAttributes().Any(x => x.AttributeClass.Name == "Flags") == true,
                             Depth   = currentNode.Depth + 1
                         };
+
+                        var nodeFullName = fieldNode.GetFullName();
+                        if (!state.CastedNameToType.ContainsKey(nodeFullName) && fieldNode.IsEnum) {
+                            state.CastedNameToType.Add(nodeFullName, fieldNode.TypeStr);
+                        }
 
                         currentNode.Nodes.Add(fieldNode);
                         currentNode = rootNode;

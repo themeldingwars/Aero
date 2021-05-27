@@ -85,7 +85,7 @@ namespace Aero.Gen
                         (string file, string src) = genv2.GenClass(cls);
                         //Debug.Write(src);
                         var name = Path.GetFileNameWithoutExtension(file);
-                        File.WriteAllText($"I:/{name}.cs", src);
+                        //File.WriteAllText($"I:/{name}.cs", src);
                         
                         context.AddSource(file, SourceText.From(src, Encoding.UTF8));
                     }

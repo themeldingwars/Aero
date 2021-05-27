@@ -570,7 +570,7 @@ namespace Aero.Gen
                     AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.RefFieldName}; {idxName}++)");
                     break;
                 case AeroArrayNode.Modes.LenTypePrefixed:
-                    var prefixName = $"array{arrayNode.Length}Len";
+                    var prefixName = $"array{firstSubNode.Name}{arrayNode.Depth}Len";
                     if (TypeHandlers.TryGetValue(arrayNode.PrefixTypeStr, out AeroTypeHandler handler)) {
                         AddLine($"var {handler.Reader(prefixName, null)}");
                         AddLine($"offset += {handler.Size};");

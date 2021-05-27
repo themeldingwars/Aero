@@ -16,8 +16,10 @@ namespace Aero.Gen
         public Ops      Op;
         public string[] Values;
 
-        public string GetIfStr()
+        public string GetIfStr(string nameBase = "")
         {
+            var key = nameBase != "" ? $"{nameBase}.{Key}" : Key;
+
             bool isFlagsCheck = Op is Ops.HasFlag or Ops.DoesntHaveFlag;
             var opStr = Op switch
             {
@@ -29,7 +31,6 @@ namespace Aero.Gen
             };
 
             var op    = Op;
-            var key   = Key;
             //var inner = Values.Select(x => isFlagsCheck ? $"({key} {opStr} {x}) {(op == Ops.HasFlag ? "!=" : "==")} 0" : $"{key} {opStr} {x}");
             var inner = Values.Select(x => isFlagsCheck ? $"({key} {opStr} {x}) {(op == Ops.HasFlag ? "!=" : "==")} 0" : $"{key} {opStr} {x}");
             return $"({string.Join(" || ", inner)})";

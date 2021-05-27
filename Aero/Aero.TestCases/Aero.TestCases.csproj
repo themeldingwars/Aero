@@ -9,6 +9,8 @@
         <LangVersion>preview</LangVersion>
 
         <Aero_BoundsCheck>True</Aero_BoundsCheck>
+
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>

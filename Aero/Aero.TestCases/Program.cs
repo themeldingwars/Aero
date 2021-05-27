@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Aero.Gen;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -120,7 +122,14 @@ public class Test2
     }
 }
 }");
-        
+
+        public enum BitfieldMask : ulong
+        {
+            CinematicCamera       = 1UL << 0,
+            PersonalFactionStance = 1UL << 1,
+
+        }
+
         static void Main(string[] args)
         {
             AeroGenerator   generator = new AeroGenerator();
