@@ -70,11 +70,27 @@ namespace Aero.Gen
                 }
             },
             {
+                "int32", new AeroTypeHandler
+                {
+                    Size   = 4,
+                    Reader = (name, typeCast) => TypeHandlers["int"].Reader(name, typeCast),
+                    Writer = (name, typeCast) => TypeHandlers["int"].Writer(name, typeCast)
+                }
+            },
+            {
                 "uint", new AeroTypeHandler
                 {
                     Size   = 4,
                     Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(offset, 4));",
                     Writer = (name, typeCast) => $"BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(offset, 4), {typeCast}{name});"
+                }
+            },
+            {
+                "uint32", new AeroTypeHandler
+                {
+                    Size   = 4,
+                    Reader = (name, typeCast) => TypeHandlers["uint"].Reader(name, typeCast),
+                    Writer = (name, typeCast) => TypeHandlers["uint"].Writer(name, typeCast)
                 }
             },
             {
@@ -86,11 +102,27 @@ namespace Aero.Gen
                 }
             },
             {
+                "int16", new AeroTypeHandler
+                {
+                    Size   = 2,
+                    Reader = (name, typeCast) => TypeHandlers["short"].Reader(name, typeCast),
+                    Writer = (name, typeCast) => TypeHandlers["short"].Writer(name, typeCast)
+                }
+            },
+            {
                 "ushort", new AeroTypeHandler
                 {
                     Size   = 2,
                     Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(offset, 2));",
                     Writer = (name, typeCast) => $"BinaryPrimitives.WriteUInt16LittleEndian(buffer.Slice(offset, 2), {typeCast}{name});"
+                }
+            },
+            {
+                "uint16", new AeroTypeHandler
+                {
+                    Size   = 2,
+                    Reader = (name, typeCast) => TypeHandlers["ushort"].Reader(name, typeCast),
+                    Writer = (name, typeCast) => TypeHandlers["ushort"].Writer(name, typeCast)
                 }
             },
             {
@@ -102,11 +134,27 @@ namespace Aero.Gen
                 }
             },
             {
+                "int64", new AeroTypeHandler
+                {
+                    Size   = 8,
+                    Reader = (name, typeCast) => TypeHandlers["long"].Reader(name, typeCast),
+                    Writer = (name, typeCast) => TypeHandlers["long"].Writer(name, typeCast)
+                }
+            },
+            {
                 "ulong", new AeroTypeHandler
                 {
                     Size   = 8,
                     Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadUInt64LittleEndian(data.Slice(offset, 8));",
                     Writer = (name, typeCast) => $"BinaryPrimitives.WriteUInt64LittleEndian(buffer.Slice(offset, 8), {typeCast}{name});"
+                }
+            },
+            {
+                "uint64", new AeroTypeHandler
+                {
+                    Size   = 8,
+                    Reader = (name, typeCast) => TypeHandlers["ulong"].Reader(name, typeCast),
+                    Writer = (name, typeCast) => TypeHandlers["ulong"].Writer(name, typeCast)
                 }
             },
             {
