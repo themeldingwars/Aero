@@ -27,6 +27,13 @@ jobs:
       run: dotnet build --no-restore -c Release
     - name: Test
       run: dotnet test --no-build --verbosity normal -c Release
+    - name: Publish nuget
+      uses: rohith/publish-nuget@v2
+      if: github.event_name != 'pull_request'
+      with: 
+        PROJECT_FILE_PATH: Aero.Gen/Aero.Gen.csproj
+        PACKAGE_NAME: Aero.Gen
+        NUGET_KEY: ${{secrets.TMW_NUGET}}
     - name: Run benchmarks
       run: cd Aero.UnitTests && dotnet run -c Release
     - id: get-comment-body
