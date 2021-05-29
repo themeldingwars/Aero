@@ -69,6 +69,8 @@ namespace Aero.Gen
 
         public void Execute(GeneratorExecutionContext context)
         {
+            string lastClassGenerated = "";
+            
             try
             {
                 var config = AeroGenConfig.Load(context.AnalyzerConfigOptions.GlobalOptions);
@@ -81,6 +83,8 @@ namespace Aero.Gen
                         var treeRoot = AeroSourceGraphGen.BuildTree(snRecv, cls);
                         Debug.Write(AeroSourceGraphGen.PrintTree(treeRoot));
 
+                        lastClassGenerated = AgUtils.GetClassName(cls);
+                        
                         var genv2 = new Genv2(context, config);
                         (string file, string src) = genv2.GenClass(cls);
                         //Debug.Write(src);
@@ -93,7 +97,7 @@ namespace Aero.Gen
             }
             catch (Exception e)
             {
-                context.ReportDiagnostic(Diagnostic.Create(GenericError, Location.None, $"{e.ToString()} {e.Source}"));
+                context.ReportDiagnostic(Diagnostic.Create(GenericError, Location.None, $"Error processing file {lastClassGenerated}: {e.ToString()} {e.Source}"));
             }
         }
     }
