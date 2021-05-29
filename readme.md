@@ -9,8 +9,7 @@ An other plus from this should be better packet peep inspection, the code gen ca
 Why Aero, well she did talk alot so....
 
 # How to install
-
-TODO
+Install the nuget package ``Aero.Gen``
 
 # Generated Functions
 The following functions will be generated on Aero marked classes
@@ -115,6 +114,9 @@ Strings should be marked with this attribute to be parsed correctly.
 * ``[AeroString(typeof(byte))]``: Marks the string as length prefixed with the given type, eg will read a byte and then that number of chars into the string
 * ``[AeroString(10)]``: Read a fixed size string, in this case will read 10 chars as a string
 * ``[AeroString]``: Defines a null terminated string, will read until it gets a ``0x00`` or it reaches the end of the span.
+
+## ``[AeroSdb]``
+* ``[AeroSdb("Table Name", "Column Name")]``: Mark a field as having a value from the sdb table and column given.
 
 # Examples
 Here are some exampls, for more you can see the unit tests in the project.
