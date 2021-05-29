@@ -110,7 +110,7 @@ namespace Aero.UnitTests
                 ArrayTest = new []{ new ArrayBlockItem(), new ArrayBlockItem()}
             };
             var packedSize = test.GetPackedSize();
-            if (packedSize == (8 * 2)) {
+            if (packedSize == 4 + (8 * 2)) {
                 Assert.Pass();
             }
             else {

@@ -13,9 +13,7 @@ namespace Aero.Gen
         public GeneratorExecutionContext    Context;
         public List<ClassDeclarationSyntax> ClassesToAugment { get; private set; } = new();
         
-        public List<ClassDeclarationSyntax> AeroClasses { get; private set; } = new();
-        public List<StructDeclarationSyntax> AeroBlocks { get; private set; } = new();
-        
+        public List<ClassDeclarationSyntax>                AeroClasses     { get; private set; } = new();
         public Dictionary<string, StructDeclarationSyntax> AeroBlockLookup { get; private set; } = new();
         
         public static bool HasAttribute(ClassDeclarationSyntax cds, string attributeName) => cds.AttributeLists.Any(x => x.Attributes.Any(y => (y.Name is IdentifierNameSyntax ins && ins.Identifier.Text == attributeName) ||
@@ -31,21 +29,12 @@ namespace Aero.Gen
             }
             
             if (syntaxNode is StructDeclarationSyntax sds && sds.AttributeLists.Count > 0 && HasAttribute(sds, AeroBlockAttribute.Name)) {
-                AeroBlocks.Add(sds);
                 AeroBlockLookup.Add(sds.GetFullName(), sds);
             }
         }
 
         public StructDeclarationSyntax GetAeroBLockOfName(string ns, string name)
         {
-            /*
-            foreach (var ab in AeroBlocks) {
-                if (ab.Identifier.Text == name) {
-                    return ab;
-                }
-            }
-            */
-
             if (AeroBlockLookup.TryGetValue(name, out StructDeclarationSyntax sds)) {
                 return sds;
             }

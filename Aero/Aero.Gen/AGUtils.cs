@@ -16,8 +16,10 @@ namespace Aero.Gen
         public Ops      Op;
         public string[] Values;
 
-        public string GetIfStr()
+        public string GetIfStr(string nameBase = "")
         {
+            var key = nameBase != "" ? $"{nameBase}.{Key}" : Key;
+
             bool isFlagsCheck = Op is Ops.HasFlag or Ops.DoesntHaveFlag;
             var opStr = Op switch
             {
@@ -29,7 +31,6 @@ namespace Aero.Gen
             };
 
             var op    = Op;
-            var key   = Key;
             //var inner = Values.Select(x => isFlagsCheck ? $"({key} {opStr} {x}) {(op == Ops.HasFlag ? "!=" : "==")} 0" : $"{key} {opStr} {x}");
             var inner = Values.Select(x => isFlagsCheck ? $"({key} {opStr} {x}) {(op == Ops.HasFlag ? "!=" : "==")} 0" : $"{key} {opStr} {x}");
             return $"({string.Join(" || ", inner)})";
@@ -241,3 +242,187 @@ namespace Aero.Gen
         }*/
     }
 }
+
+/*
+public virtual void CreateReadType(string name, string typeStr, string castType = null)
+        {
+            bool   wasHandled = true;
+            string typeCast   = castType != null ? $"({castType})" : "";
+
+            switch (typeStr) {
+                case "byte":
+                    AddLine($"{name} = {typeCast}data[offset];");
+                    break;
+                case "char":
+                    AddLine($"{name} = ({typeCast}(char)data[offset]);");
+                    typeStr = "byte";
+                    break;
+                case "int":
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    break;
+                case "uint":
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    break;
+                case "short":
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    break;
+                case "ushort":
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    break;
+                case "double":
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    break;
+                case "float":
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadSingleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    break;
+                case "ulong":
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadUInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    break;
+                case "long":
+                    AddLine(
+                        $"{name} = {typeCast}BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
+                    break;
+
+                case "Vector2":
+                    AddLines($"{name} = new Vector2{{",
+                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
+                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4))",
+                        "};");
+                    AddLine($"offset += 8;"); // 2 floats
+                    wasHandled = false;
+                    break;
+                case "Vector3":
+                    AddLines($"{name} = new Vector3{{",
+                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
+                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
+                        "Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4))",
+                        "};");
+                    AddLine($"offset += 12;"); // 3 floats
+                    wasHandled = false;
+                    break;
+                case "Vector4":
+                    AddLines($"{name} = new Vector4{{",
+                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
+                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
+                        "Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4)),",
+                        "W = MemoryMarshal.Read<float>(data.Slice(offset + 12, 4))",
+                        "};");
+                    AddLine($"offset += 16;"); // 4 floats
+                    wasHandled = false;
+                    break;
+                case "Quaternion":
+                    AddLines($"{name} = new Quaternion{{",
+                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
+                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
+                        "Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4)),",
+                        "W = MemoryMarshal.Read<float>(data.Slice(offset + 12, 4))",
+                        "};");
+                    AddLine($"offset += 16;"); // 4 floats
+                    wasHandled = false;
+                    break;
+
+                default:
+                    AddLine($"// Unhandled type {typeStr}");
+                    wasHandled = false;
+                    break;
+            }
+
+            if (wasHandled) {
+                AddLine($"offset += sizeof({typeStr});");
+            }
+
+            AddLine();
+        }
+
+        public virtual void CreateWriteType(string name, string typeStr, string castType = null)
+        {
+            bool   wasHandled = true;
+            string typeCast   = castType != null ? $"({castType})" : "";
+
+            switch (typeStr) {
+                case "byte":
+                    AddLine($"buffer[offset] = {typeCast}{name};");
+                    break;
+                case "char":
+                    AddLine($"buffer[offset] = {typeCast}((byte){name});");
+                    typeStr = "byte";
+                    break;
+                case "int":
+                    AddLine(
+                        $"BinaryPrimitives.WriteInt32LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "uint":
+                    AddLine(
+                        $"BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "short":
+                    AddLine(
+                        $"BinaryPrimitives.WriteInt16LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "ushort":
+                    AddLine(
+                        $"BinaryPrimitives.WriteUInt16LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "double":
+                    AddLine(
+                        $"BinaryPrimitives.WriteDoubleLittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "float":
+                    AddLine(
+                        $"BinaryPrimitives.WriteSingleLittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "ulong":
+                    AddLine(
+                        $"BinaryPrimitives.WriteUInt64LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+                case "long":
+                    AddLine(
+                        $"BinaryPrimitives.WriteInt64LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
+                    break;
+
+                case "Vector2":
+                    AddLines(
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",
+                        "offset += 8;");
+                    wasHandled = false;
+                    break;
+                case "Vector3":
+                    AddLines(
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);",
+                        "offset += 12;");
+                    wasHandled = false;
+                    break;
+                case "Vector4":
+                case "Quaternion":
+                    AddLines(
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);",
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 12, sizeof(float)), ref {name}.W);",
+                        "offset += 16;");
+                    wasHandled = false;
+                    break;
+
+                default:
+                    AddLine($"// Unhandled type {typeStr}");
+                    wasHandled = false;
+                    break;
+            }
+
+            if (wasHandled) {
+                AddLine($"offset += sizeof({typeStr});");
+            }
+
+            AddLine();
+        }
+*/

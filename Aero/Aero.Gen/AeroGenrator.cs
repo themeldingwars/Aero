@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
 namespace Aero.Gen
@@ -59,6 +60,8 @@ namespace Aero.Gen
 
     #endregion
 
+        public static FieldDeclarationSyntax LastCheckedField;
+        
         // These types have special case handlers to be treated like simpler value types
         public static readonly string[] SpecialCasesTypes = new[] { "system.numerics.vector2", "system.numerics.vector3", "system.numerics.vector4", "system.numerics.quaternion" };
 
@@ -69,6 +72,8 @@ namespace Aero.Gen
 
         public void Execute(GeneratorExecutionContext context)
         {
+            string lastClassGenerated = "";
+            
             try
             {
                 var config = AeroGenConfig.Load(context.AnalyzerConfigOptions.GlobalOptions);
@@ -78,16 +83,24 @@ namespace Aero.Gen
                 if (config.Enabled) {
                     // Aero message classes
                     foreach (var cls in snRecv.ClassesToAugment) {
+                        var treeRoot = AeroSourceGraphGen.BuildTree(snRecv, cls);
+                        Debug.Write(AeroSourceGraphGen.PrintTree(treeRoot));
+
+                        lastClassGenerated = AgUtils.GetClassName(cls);
+                        
                         var genv2 = new Genv2(context, config);
                         (string file, string src) = genv2.GenClass(cls);
-                        Debug.Write(src);
+                        //Debug.Write(src);
+                        var name = Path.GetFileNameWithoutExtension(file);
+                        //File.WriteAllText($"I:/AeroGenOutputTest/{name}.cs", src);
+                        
                         context.AddSource(file, SourceText.From(src, Encoding.UTF8));
                     }
                 }
             }
             catch (Exception e)
             {
-                context.ReportDiagnostic(Diagnostic.Create(GenericError, Location.None, $"{e.ToString()} {e.Source}"));
+                context.ReportDiagnostic(Diagnostic.Create(GenericError, LastCheckedField != default ? LastCheckedField.GetLocation() : Location.None, $"Error processing file {lastClassGenerated}: {e.ToString()} {e.Source}"));
             }
         }
     }

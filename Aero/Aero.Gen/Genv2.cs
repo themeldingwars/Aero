@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
+using System.Drawing;
+using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -33,19 +36,168 @@ namespace Aero.Gen
             UsingsToAdd.Add("System.Numerics");
         }
 
-        private string GetTypeSize(string typeStr)
+        public class AeroTypeHandler
         {
-            var sizeOfTypeStr = typeStr == "char" ? "byte" : typeStr;
-            var size = typeStr switch
-            {
-                "System.Numerics.Vector2"    => "8",
-                "System.Numerics.Vector3"    => "12",
-                "System.Numerics.Vector4"    => "16",
-                "System.Numerics.Quaternion" => "16",
-                _            => $"sizeof({sizeOfTypeStr})"
-            };
+            public int                          Size = 0;
+            public Func<string, string, string> Reader;
+            public Func<string, string, string> Writer;
+        }
 
-            return size;
+        public static Dictionary<string, AeroTypeHandler> TypeHandlers = new()
+        {
+            {
+                "byte", new AeroTypeHandler
+                {
+                    Size   = 1,
+                    Reader = (name, typeCast) => $"{name} = {typeCast}data[offset];",
+                    Writer = (name, typeCast) => $"buffer[offset] = {typeCast}{name};",
+                }
+            },
+            {
+                "char", new AeroTypeHandler
+                {
+                    Size   = 1,
+                    Reader = (name, typeCast) => $"{name} = ({typeCast}(char)data[offset]);",
+                    Writer = (name, typeCast) => $"buffer[offset] = {typeCast}((byte){name});",
+                }
+            },
+            {
+                "int", new AeroTypeHandler
+                {
+                    Size   = 4,
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, 4));",
+                    Writer = (name, typeCast) => $"BinaryPrimitives.WriteInt32LittleEndian(buffer.Slice(offset, 4), {typeCast}{name});"
+                }
+            },
+            {
+                "uint", new AeroTypeHandler
+                {
+                    Size   = 4,
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(offset, 4));",
+                    Writer = (name, typeCast) => $"BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(offset, 4), {typeCast}{name});"
+                }
+            },
+            {
+                "short", new AeroTypeHandler
+                {
+                    Size   = 2,
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadInt16LittleEndian(data.Slice(offset, 2));",
+                    Writer = (name, typeCast) => $"BinaryPrimitives.WriteInt16LittleEndian(buffer.Slice(offset, 2), {typeCast}{name});"
+                }
+            },
+            {
+                "ushort", new AeroTypeHandler
+                {
+                    Size   = 2,
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(offset, 2));",
+                    Writer = (name, typeCast) => $"BinaryPrimitives.WriteUInt16LittleEndian(buffer.Slice(offset, 2), {typeCast}{name});"
+                }
+            },
+            {
+                "long", new AeroTypeHandler
+                {
+                    Size   = 8,
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, 8));",
+                    Writer = (name, typeCast) => $"BinaryPrimitives.WriteInt64LittleEndian(buffer.Slice(offset, 8), {typeCast}{name});"
+                }
+            },
+            {
+                "ulong", new AeroTypeHandler
+                {
+                    Size   = 8,
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadUInt64LittleEndian(data.Slice(offset, 8));",
+                    Writer = (name, typeCast) => $"BinaryPrimitives.WriteUInt64LittleEndian(buffer.Slice(offset, 8), {typeCast}{name});"
+                }
+            },
+            {
+                "float", new AeroTypeHandler
+                {
+                    Size   = 4,
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadSingleLittleEndian(data.Slice(offset, 4));",
+                    Writer = (name, typeCast) => $"BinaryPrimitives.WriteSingleLittleEndian(buffer.Slice(offset, 4), {typeCast}{name});"
+                }
+            },
+            {
+                "double", new AeroTypeHandler
+                {
+                    Size   = 8,
+                    Reader = (name, typeCast) => $"{name} = {typeCast}BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(offset, 8));",
+                    Writer = (name, typeCast) => $"BinaryPrimitives.WriteDoubleLittleEndian(buffer.Slice(offset, 8), {typeCast}{name});"
+                }
+            },
+            {
+                "system.numerics.vector2", new AeroTypeHandler
+                {
+                    Size   = 8,
+                    Reader = (name, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
+                                                                         $"{name}.Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4));",
+                    Writer = (name, typeCast) => $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);" +
+                                                                         $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);"
+                }
+            },
+            {
+                "system.numerics.vector3", new AeroTypeHandler
+                {
+                    Size   = 12,
+                    Reader = (name, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
+                                                          $"{name}.Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4));" +
+                                                          $"{name}.Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4));",
+                    Writer = (name, typeCast) => $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);" +
+                                                          $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);" +
+                                                          $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);"
+                }
+            },
+            {
+                "system.numerics.vector4", new AeroTypeHandler
+                {
+                    Size   = 16,
+                    Reader = (name, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
+                                                          $"{name}.Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4));" +
+                                                          $"{name}.Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4));" +
+                                                          $"{name}.W = MemoryMarshal.Read<float>(data.Slice(offset + 12, 4));",
+                    Writer = (name, typeCast) => $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);" +
+                                                          $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);" +
+                                                          $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);" +
+                                                          $"MemoryMarshal.Write(buffer.Slice(offset + 12, sizeof(float)), ref {name}.W);"
+                }
+            },
+            {
+                "system.numerics.quaternion", new AeroTypeHandler
+                {
+                    Size   = 16,
+                    Reader = (name, typeCast) => TypeHandlers["system.numerics.vector4"].Reader(name, typeCast),
+                    Writer = (name, typeCast) => TypeHandlers["system.numerics.vector4"].Writer(name, typeCast)
+                }
+            }
+        };
+
+        public void AddReader(string name, string typeStr, string castTypeStr = null)
+        {
+            if (TypeHandlers.TryGetValue(typeStr.ToLower(), out AeroTypeHandler handler)) {
+                var castedTypeStr = castTypeStr != null ? $"({castTypeStr})" : "";
+                AddLine($"{handler.Reader(name, castedTypeStr)}");
+                AddLine($"offset += {handler.Size};");
+                AddLine();
+            }
+        }
+        
+        public void AddWriter(string name, string typeStr, string castTypeStr = null)
+        {
+            if (TypeHandlers.TryGetValue(typeStr.ToLower(), out AeroTypeHandler handler)) {
+                var castedTypeStr = castTypeStr != null ? $"({castTypeStr})" : "";
+                AddLine($"{handler.Writer(name, castedTypeStr)}");
+                AddLine($"offset += {handler.Size};");
+                AddLine();
+            }
+        }
+
+        public static int GetTypeSize(string typeStr)
+        {
+            if (TypeHandlers.TryGetValue(typeStr.ToLower(), out AeroTypeHandler handler)) {
+                return handler.Size;
+            }
+
+            return -1;
         }
 
     #region Code adding functions
@@ -92,70 +244,6 @@ namespace Aero.Gen
             if (noTrailingNewLine) AddLine();
         }
 
-        public AgBlock AddBoundsCheck(string fieldName, string typeStr)
-        {
-            // Chars are 2 bytes in c# for unicode, we don't want that :>
-            var sizeOfTypeStr = typeStr == "char" ? "byte" : typeStr;
-
-            var sizeStr = GetTypeSize(sizeOfTypeStr);
-
-            var ifStatment = @$"if (data.Length < (offset + {sizeStr}))";
-            return new AgBlock(this, () =>
-            {
-                if (Config.BoundsCheck) {
-                    if (Config.DiagLogging) {
-                        AddLine($"{ifStatment} {{");
-                        Indent();
-                        {
-                            AddLines(
-                                @$"LogDiag($""Failed to read {typeStr}({{{sizeStr}}} bytes) for {fieldName}, offset: {{offset}} data length: {{data.Length}}, read overflowed by {{(offset + {sizeStr}) - data.Length}}."");",
-                                "return -offset;");
-                        }
-                        UnIndent();
-                        AddLine("}");
-                    }
-                    else {
-                        AddLine($"{ifStatment} return -offset;");
-                    }
-                }
-            }, () =>
-            {
-                if (Config.DiagLogging) {
-                    AddDiagLog(
-                        $"Read {typeStr}({{{sizeStr}}} bytes) for {fieldName} at offset {{offset - {sizeStr}}}.");
-                }
-            }, defaultAddNoContent: true);
-        }
-
-        public AgBlock AddBoundsCheckKnownLength(string fieldName, string typeStr, string length)
-        {
-            var ifStatment = @$"if (data.Length < (offset + {length}))";
-            return new AgBlock(this, () =>
-            {
-                if (Config.BoundsCheck) {
-                    if (Config.DiagLogging) {
-                        AddLine($"{ifStatment} {{");
-                        Indent();
-                        {
-                            AddLines(
-                                @$"LogDiag($""Failed to read {typeStr}({length} bytes) for {fieldName}, offset: {{offset}} data length: {{data.Length}}, read overflowed by {{(offset + {length}) - data.Length}}."");",
-                                "return -offset;");
-                        }
-                        UnIndent();
-                        AddLine("}");
-                    }
-                    else {
-                        AddLine($"{ifStatment} return -offset;");
-                    }
-                }
-            }, () =>
-            {
-                if (Config.DiagLogging) {
-                    AddDiagLog($"Read {typeStr}({length} bytes) for {fieldName} at offset {{offset - {length}}}.");
-                }
-            }, defaultAddNoContent: true);
-        }
-
     #endregion
 
         public (string fileName, string source) GenClass(ClassDeclarationSyntax cd)
@@ -172,13 +260,20 @@ namespace Aero.Gen
                 using (Class(AgUtils.GetClassName(cd))) {
                     if (Config.DiagLogging) AddDiagBoilerplate();
 
-                    CreateReader(cd);
+                #if DEBUG
+                    AddLine("/*");
+                    var treeRootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                    AddLine(AeroSourceGraphGen.PrintTree(treeRootNode));
+                    AddLine("*/");
+                #endif
+
+                    CreateReaderV2(cd);
+                    AddLine();
+                    
+                    CreateGetPackedSizeV2(cd);
                     AddLine();
 
-                    CreateGetPackedSize(cd);
-                    AddLine();
-
-                    CreateWriter(cd);
+                    CreatePackerV2(cd);
                     AddLine();
                 }
             }
@@ -195,356 +290,7 @@ namespace Aero.Gen
                 ""
             );
         }
-
-        public virtual void AddDiagLog(string msg) => AddLine(@$"LogDiag($""{msg}"");");
-
-        public virtual void CreateReader(ClassDeclarationSyntax cd)
-        {
-            using (Function("public int Unpack(ReadOnlySpan<byte> data)")) {
-                AddLine("int offset = 0;");
-                AddLine();
-
-                var  aeroFieldEnumerator = new AeroFieldEnumerator(cd, Context);
-                int  lastDepth           = 0;
-                bool closeScope          = false;
-                foreach (var fieldInfo in aeroFieldEnumerator) {
-                    CreateReader(fieldInfo, ref lastDepth, ref closeScope);
-                }
-
-                for (int i = 0; i < lastDepth; i++) {
-                    EndScope(true);
-                }
-
-                AddLine("return offset;");
-            }
-        }
-
-        public virtual void CreateGetPackedSize(ClassDeclarationSyntax cd)
-        {
-            using (Function("public int GetPackedSize()")) {
-                AddLine("int size = 0;");
-                AddLine();
-
-                ClassFieldGen(cd, (fieldInfo, arrayStart) =>
-                {
-                    string sizeStr = "";
-
-                    if (fieldInfo.IsString) {
-                        if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize) {
-                            sizeStr = $"{fieldInfo.StringInfo.Length}";
-                        }
-                        else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
-                            sizeStr = $"({fieldInfo.FieldName}.Length + 1)";
-                        }
-                        else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
-                            sizeStr = $"sizeof({fieldInfo.StringInfo.KeyType}) + {fieldInfo.FieldName}.Length";
-                        }
-                        else {
-                            sizeStr = $"{fieldInfo.FieldName}.Length";
-                        }
-                    }
-                    else if (!fieldInfo.IsBlock) {
-                        sizeStr = $"{GetTypeSize(fieldInfo.TypeStr)}";
-                    }
-
-                    if (fieldInfo.IsArray && !fieldInfo.IsBlock) {
-                        if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.RefField) {
-                            AddLine($"size += {sizeStr} * {fieldInfo.ArrayInfo.KeyName};");
-                        }
-                        else if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
-                            AddLine(
-                                $"size += {GetTypeSize(fieldInfo.ArrayInfo.KeyType)} + ({sizeStr} * {fieldInfo.FieldName}.Length);");
-                        }
-                        else if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize) {
-                            AddLine($"size += {sizeStr} * {fieldInfo.ArrayInfo.Length};");
-                        }
-                    }
-                    else if (arrayStart) {
-                        //AddLine($"size += {GetTypeSize(fieldInfo.ArrayInfo.KeyType)} + ({sizeStr} * {fieldInfo.FieldName}.Length);");
-
-                        var idxKey = $"idx{fieldInfo.Depth}";
-                        AddLine($"for(int {idxKey} = 0; {idxKey} < {fieldInfo.FieldName}.Length; {idxKey}++)");
-                        //using (ForLen("int", arrayLen, idxKey)) {
-                    }
-                    else {
-                        AddLine($"size += {sizeStr};");
-                    }
-                });
-
-                AddLine("return size;");
-            }
-        }
-
-        public virtual void CreateWriter(ClassDeclarationSyntax cd)
-        {
-            using (Function("public int Pack(Span<byte> buffer)")) {
-                AddLine("int offset = 0;");
-                AddLine();
-
-                ClassFieldGen(cd, (fieldInfo, arrayStart) =>
-                {
-                    // Skip over arrays for now
-                    //if (!fieldInfo.IsArray) {
-                    if (fieldInfo.IsString) {
-                        var strName = fieldInfo.FieldName;
-
-                        if (fieldInfo.IsArray) {
-                            var idxKey = $"idx{fieldInfo.Depth}";
-                            strName = $"{fieldInfo.FieldName}[{idxKey}]";
-                            AddLine($"for(int {idxKey} = 0; {idxKey} < {fieldInfo.FieldName}.Length; {idxKey}++)");
-                            StartScope();
-                        }
-
-                        if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize ||
-                            fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.RefField  ||
-                            fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
-                            AddLines(
-                                $"var {fieldInfo.FieldName}Bytes = Encoding.ASCII.GetBytes({strName}).AsSpan();",
-                                $"{fieldInfo.FieldName}Bytes.CopyTo(buffer.Slice(offset, {fieldInfo.FieldName}Bytes.Length));");
-
-                            if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
-                                AddLines($"buffer[offset + {fieldInfo.FieldName}Bytes.Length] = 0;",
-                                    $"offset += ({fieldInfo.FieldName}Bytes.Length + 1);");
-                            }
-                            else {
-                                AddLine($"offset += {fieldInfo.FieldName}Bytes.Length;");
-                            }
-                        }
-                        else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
-                            CreateWriteType($"{strName}.Length", fieldInfo.StringInfo.KeyType,
-                                fieldInfo.StringInfo.KeyType);
-                            AddLines(
-                                $"var {fieldInfo.FieldName}Bytes = Encoding.ASCII.GetBytes({strName}).AsSpan();",
-                                $"{fieldInfo.FieldName}Bytes.CopyTo(buffer.Slice(offset, {fieldInfo.FieldName}Bytes.Length));",
-                                $"offset += {fieldInfo.FieldName}Bytes.Length;");
-                        }
-
-                        if (fieldInfo.IsArray) {
-                            EndScope();
-                            AddLine();
-                        }
-                    }
-                    else if (arrayStart) {
-                        var idxKey = $"idx{fieldInfo.Depth}";
-                        AddLine($"for(int {idxKey} = 0; {idxKey} < {fieldInfo.FieldName}.Length; {idxKey}++)");
-                    }
-                    else if (!fieldInfo.IsBlock) {
-                        if (fieldInfo.IsArray) {
-                            if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
-                                CreateWriteType($"({fieldInfo.ArrayInfo.KeyType}){fieldInfo.FieldName}.Length",
-                                    fieldInfo.ArrayInfo.KeyType);
-                            }
-
-                            AddLine(
-                                $"for(int idx{fieldInfo.Depth} = 0; idx{fieldInfo.Depth} < {fieldInfo.FieldName}.Length; idx{fieldInfo.Depth}++)");
-                            StartScope();
-                        }
-
-                        CreateWriteType(
-                            fieldInfo.IsArray ? $"{fieldInfo.FieldName}[idx{fieldInfo.Depth}]" : fieldInfo.FieldName,
-                            fieldInfo.TypeStr, fieldInfo.IsEnum ? fieldInfo.EnumType : null);
-
-                        if (fieldInfo.IsArray) {
-                            EndScope();
-                        }
-                    }
-                    //}
-                });
-
-                AddLine("return offset;");
-            }
-        }
-
-        public virtual void ClassFieldGen(ClassDeclarationSyntax cd, Action<AeroFieldInfo, bool> OnField)
-        {
-            int lastDepth           = 0;
-            var aeroFieldEnumerator = new AeroFieldEnumerator(cd, Context);
-            foreach (var fieldInfoItem in aeroFieldEnumerator) {
-                HandleField(fieldInfoItem);
-            }
-
-            for (int i = 0; i < lastDepth; i++) {
-                EndScope();
-            }
-
-            void HandleField(AeroFieldInfo fieldInfo)
-            {
-                AddLine(
-                    $"// {fieldInfo.FieldName}, Type: {fieldInfo.TypeStr}, IsArray: {fieldInfo.IsArray}, IsBlock: {fieldInfo.IsBlock}, Depth: {fieldInfo.Depth}");
-                bool hasIf = fieldInfo.IfStatment != null;
-
-                if (fieldInfo.Depth < lastDepth) {
-                    for (int i = 0; i < lastDepth - fieldInfo.Depth; i++) EndScope();
-                }
-                
-                if (hasIf) {
-                    AddLine($"if ({fieldInfo.IfStatment}) ");
-                }
-
-                if (fieldInfo.Depth > lastDepth || (hasIf && !fieldInfo.IsBlock)) {
-                    StartScope();
-                }
-
-                lastDepth = fieldInfo.Depth;
-
-                if (fieldInfo.IsArray && fieldInfo.IsBlock) {
-                    OnField(fieldInfo, true);
-
-                    var subFields = fieldInfo.GetSubFieldsForArrayBlock(SyntaxReceiver,
-                        $"{fieldInfo.FieldName}[idx{fieldInfo.Depth}]");
-                    foreach (var subField in subFields) {
-                        //subField.IsArray   = true;
-                        subField.ArrayInfo = fieldInfo.ArrayInfo;
-                        subField.Depth++;
-                        HandleField(subField);
-                    }
-                }
-                else if (!fieldInfo.IsBlock) {
-                    OnField(fieldInfo, false);
-                }
-
-                if (hasIf && !fieldInfo.IsBlock) {
-                    EndScope();
-                }
-            }
-        }
-
-        private void CreateReader(AeroFieldInfo fieldInfo, ref int lastDepth, ref bool closeScope)
-        {
-            bool hasIf = fieldInfo.IfStatment != null;
-
-            {
-                var depthDiff = fieldInfo.Depth - lastDepth;
-                if (depthDiff < 0) {
-                    for (int i = 0; i < -depthDiff; i++) {
-                        EndScope(true);
-                    }
-                }
-                
-                if (hasIf) AddLine($"if ({fieldInfo.IfStatment})");
-
-                //if (closeScope) EndScope();
-                if (fieldInfo.Depth          > lastDepth || (hasIf && !fieldInfo.IsBlock)) StartScope();
-                closeScope = fieldInfo.Depth < lastDepth;
-                lastDepth  = fieldInfo.Depth;
-            }
-
-            if (fieldInfo.IsArray) {
-                CreateArrayReader(fieldInfo, ref lastDepth, ref closeScope);
-            }
-            else if (fieldInfo.IsString) {
-                CreateStringReader(fieldInfo, ref lastDepth, ref closeScope);
-            }
-            else if (!fieldInfo.IsArray && !fieldInfo.IsBlock) {
-                AddLine($"// Read {fieldInfo.FieldName}, type: {fieldInfo.TypeStr}");
-                var typeStr = fieldInfo.IsEnum ? fieldInfo.EnumType : fieldInfo.TypeStr;
-                using (AddBoundsCheck(fieldInfo.FieldName, typeStr)) {
-                    CreateReadType(fieldInfo.FieldName, typeStr, fieldInfo.IsEnum ? fieldInfo.TypeStr : null);
-                }
-            }
-
-            if (hasIf && !fieldInfo.IsBlock) {
-                EndScope();
-            }
-        }
-
-        private void CreateArrayReader(AeroFieldInfo fieldInfo, ref int lastDepth, ref bool closeScope)
-        {
-            string arrayLen = "";
-            if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize) {
-                arrayLen = $"{fieldInfo.ArrayInfo.Length}";
-                AddLine($"{fieldInfo.FieldName} = new {fieldInfo.TypeStr}[{arrayLen}];");
-            }
-            else if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
-                arrayLen = $"{fieldInfo.FieldName}Len";
-                using (AddBoundsCheck(arrayLen, fieldInfo.TypeStr)) {
-                    AddLine(
-                        $"{fieldInfo.ArrayInfo.KeyType} {arrayLen} = MemoryMarshal.Read<{fieldInfo.ArrayInfo.KeyType}>(data.Slice(offset, sizeof({fieldInfo.ArrayInfo.KeyType})));");
-                }
-
-                AddLine($"offset += sizeof({fieldInfo.ArrayInfo.KeyType});");
-                AddLine($"{fieldInfo.FieldName} = new {fieldInfo.TypeStr}[{arrayLen}];");
-            }
-            else if (fieldInfo.ArrayInfo.ArrayMode == AeroArrayInfo.Mode.RefField) {
-                arrayLen = $"{fieldInfo.ArrayInfo.KeyName}";
-                AddLine($"{fieldInfo.FieldName} = new {fieldInfo.TypeStr}[{arrayLen}];");
-            }
-
-            var idxKey = $"idx{fieldInfo.Depth}";
-            using (ForLen("int", arrayLen, idxKey)) {
-                if (fieldInfo.IsBlock) {
-                    foreach (var fieldInfo2 in fieldInfo.GetSubFieldsForArrayBlock(SyntaxReceiver,
-                        $"{fieldInfo.FieldName}[{idxKey}]")) {
-                        CreateReader(fieldInfo2, ref lastDepth, ref closeScope);
-                    }
-                }
-                else {
-                    var arrFInfo = new AeroFieldInfo
-                    {
-                        FieldName  = $"{fieldInfo.FieldName}[{idxKey}]",
-                        TypeStr    = fieldInfo.TypeStr,
-                        IsArray    = false,
-                        IsBlock    = false,
-                        IsString   = fieldInfo.IsString,
-                        ArrayInfo  = fieldInfo.ArrayInfo,
-                        StringInfo = fieldInfo.StringInfo,
-                        Depth      = fieldInfo.Depth
-                    };
-                    CreateReader(arrFInfo, ref lastDepth, ref closeScope);
-                }
-            }
-        }
-
-        private void CreateStringReader(AeroFieldInfo fieldInfo, ref int lastDepth, ref bool closeScope)
-        {
-            var nonIdxName = fieldInfo.FieldName.IndexOf("[") > 0
-                ? fieldInfo.FieldName.Substring(0, fieldInfo.FieldName.IndexOf("["))
-                : fieldInfo.FieldName;
-            nonIdxName = $"{nonIdxName}Str";
-            if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.FixedSize) {
-                using (AddBoundsCheckKnownLength(fieldInfo.FieldName, fieldInfo.TypeStr,
-                    $"{fieldInfo.StringInfo.Length}")) {
-                    AddLine(
-                        $"{fieldInfo.FieldName} = Encoding.UTF8.GetString(data.Slice(offset, {fieldInfo.StringInfo.Length}));");
-                    AddLine($"offset += {fieldInfo.StringInfo.Length};");
-                }
-            }
-            else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.RefField) {
-                var arrayLen = $"{fieldInfo.StringInfo.KeyName}";
-                using (AddBoundsCheckKnownLength(fieldInfo.FieldName, fieldInfo.TypeStr,
-                    $"{fieldInfo.StringInfo.Length}")) {
-                    AddLine($"{fieldInfo.FieldName} = Encoding.UTF8.GetString(data.Slice(offset, {arrayLen}));");
-                    AddLine($"offset += {arrayLen};");
-                }
-            }
-            else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.LengthType) {
-                string arrayLen;
-
-                using (AddBoundsCheck(fieldInfo.FieldName, fieldInfo.StringInfo.KeyType)) {
-                    arrayLen = $"{nonIdxName}Len";
-                    AddLine(
-                        $"{fieldInfo.StringInfo.KeyType} {arrayLen} = MemoryMarshal.Read<{fieldInfo.StringInfo.KeyType}>(data.Slice(offset, sizeof({fieldInfo.StringInfo.KeyType})));");
-                    AddLine($"offset += sizeof({fieldInfo.StringInfo.KeyType});");
-                }
-
-                using (AddBoundsCheckKnownLength(fieldInfo.FieldName, fieldInfo.TypeStr, $"{arrayLen}")) {
-                    AddLine($"{fieldInfo.FieldName} = Encoding.UTF8.GetString(data.Slice(offset, {arrayLen}));");
-                    AddLine($"offset += {arrayLen};");
-                }
-            }
-            else if (fieldInfo.StringInfo.ArrayMode == AeroArrayInfo.Mode.NullTerminated) {
-                // Read until a 0x00 or the end of the span
-                // Get the length to read
-                var lenName        = $"{nonIdxName}Len";
-                var reachedEndName = $"{nonIdxName}ReachedEndOfSpan";
-                AddLine($"int {lenName} = data.Slice(offset, data.Length - offset).IndexOf<byte>(0x00);");
-                AddLine($"bool {reachedEndName} = {lenName} == -1;");
-                AddLine($"{lenName} = {reachedEndName} ? (data.Length - offset) : {lenName};");
-                AddLine($"{fieldInfo.FieldName} = Encoding.UTF8.GetString(data.Slice(offset, {lenName}));");
-                AddLine($"offset += {reachedEndName} ? {lenName} : ({lenName} + 1);");
-            }
-        }
-
+        
         public virtual void AddUsings()
         {
             foreach (var use in UsingsToAdd) {
@@ -552,186 +298,307 @@ namespace Aero.Gen
             }
         }
 
-        public virtual void CreateReadType(string name, string typeStr, string castType = null)
+        public virtual void AddDiagLog(string msg) => AddLine(@$"LogDiag($""{msg}"");");
+
+        public virtual void CreateReaderV2(ClassDeclarationSyntax cd)
         {
-            bool   wasHandled = true;
-            string typeCast   = castType != null ? $"({castType})" : "";
-
-            switch (typeStr) {
-                case "byte":
-                    AddLine($"{name} = {typeCast}data[offset];");
-                    break;
-                case "char":
-                    AddLine($"{name} = ({typeCast}(char)data[offset]);");
-                    typeStr = "byte";
-                    break;
-                case "int":
-                    AddLine(
-                        $"{name} = {typeCast}BinaryPrimitives.ReadInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
-                    break;
-                case "uint":
-                    AddLine(
-                        $"{name} = {typeCast}BinaryPrimitives.ReadUInt32LittleEndian(data.Slice(offset, sizeof({typeStr})));");
-                    break;
-                case "short":
-                    AddLine(
-                        $"{name} = {typeCast}BinaryPrimitives.ReadInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
-                    break;
-                case "ushort":
-                    AddLine(
-                        $"{name} = {typeCast}BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(offset, sizeof({typeStr})));");
-                    break;
-                case "double":
-                    AddLine(
-                        $"{name} = {typeCast}BinaryPrimitives.ReadDoubleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
-                    break;
-                case "float":
-                    AddLine(
-                        $"{name} = {typeCast}BinaryPrimitives.ReadSingleLittleEndian(data.Slice(offset, sizeof({typeStr})));");
-                    break;
-                case "ulong":
-                    AddLine(
-                        $"{name} = {typeCast}BinaryPrimitives.ReadUInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
-                    break;
-                case "long":
-                    AddLine(
-                        $"{name} = {typeCast}BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, sizeof({typeStr})));");
-                    break;
-
-                case "System.Numerics.Vector2":
-                    AddLines($"{name} = new Vector2{{",
-                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
-                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4))",
-                        "};");
-                    AddLine($"offset += 8;"); // 2 floats
-                    wasHandled = false;
-                    break;
-                case "System.Numerics.Vector3":
-                    AddLines($"{name} = new Vector3{{",
-                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
-                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
-                        "Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4))",
-                        "};");
-                    AddLine($"offset += 12;"); // 3 floats
-                    wasHandled = false;
-                    break;
-                case "System.Numerics.Vector4":
-                    AddLines($"{name} = new Vector4{{",
-                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
-                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
-                        "Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4)),",
-                        "W = MemoryMarshal.Read<float>(data.Slice(offset + 12, 4))",
-                        "};");
-                    AddLine($"offset += 16;"); // 4 floats
-                    wasHandled = false;
-                    break;
-                case "System.Numerics.Quaternion":
-                    AddLines($"{name} = new Quaternion{{",
-                        "X = MemoryMarshal.Read<float>(data.Slice(offset, 4)),",
-                        "Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4)),",
-                        "Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4)),",
-                        "W = MemoryMarshal.Read<float>(data.Slice(offset + 12, 4))",
-                        "};");
-                    AddLine($"offset += 16;"); // 4 floats
-                    wasHandled = false;
-                    break;
-
-                default:
-                    AddLine($"// Unhandled type {typeStr}");
-                    wasHandled = false;
-                    break;
+            using (Function("public int Unpack(ReadOnlySpan<byte> data)")) {
+                AddLine("int offset = 0;");
+                AddLine();
+                
+                CreateLogicFlow(cd, 
+                preNode: node =>
+                {
+                    if (node is AeroArrayNode arrayNode) {
+                        CreateForFromNode(arrayNode);
+                    }
+                },
+                onNode: node =>
+                {
+                    if (node is AeroFieldNode fieldNode) {
+                        AddReader(fieldNode.GetFullName(),
+                            (fieldNode.IsEnum ? fieldNode.EnumStr : fieldNode.TypeStr).ToLower(),
+                            fieldNode.IsEnum ? fieldNode.TypeStr : null);
+                    }
+                    else if (node is AeroStringNode stringNode) {
+                        CreateStringReader(stringNode, node);
+                    }
+                });
+                
+                AddLine("return offset;");
             }
+        }
+        
+        public virtual void CreateGetPackedSizeV2(ClassDeclarationSyntax cd)
+        {
+            using (Function("public int GetPackedSize()")) {
+                AddLine("int offset = 0;");
+                AddLine();
+                
+                var combinedSize = 0;
+                CreateLogicFlow(cd, 
+                    preNode: node =>
+                    {
+                        if (node is AeroArrayNode arrayNode && !arrayNode.IsFixedSize()) {
+                            var idxName = $"idx{arrayNode.Depth}";
+                                AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");
+                        }
+                        
+                        /*
+                        if (node.IsFixedSize()) {
+                            combinedSize += node.GetSize();
+                        }
 
-            if (wasHandled) {
-                AddLine($"offset += sizeof({typeStr});");
+                        if (combinedSize > 0 && node is AeroIfNode) {
+                            AddLine($"offset += {combinedSize}; // combined size");
+                            combinedSize = 0;
+                        }
+                        */
+                    },
+                    onNode: node =>
+                    {
+                        if (node is AeroFieldNode fieldNode) {
+                            var typeStr = fieldNode.IsEnum ? fieldNode.EnumStr.ToLower() : fieldNode.TypeStr.ToLower();
+                            if (TypeHandlers.TryGetValue(typeStr, out AeroTypeHandler handler)) {
+                                if (!node.Parent.IsRoot && node.Parent is AeroArrayNode farrayNode && farrayNode.Mode == AeroArrayNode.Modes.Fixed) {
+                                    AddLine($"offset += {handler.Size * farrayNode.Length}; // array fixed");
+                                }
+                                else {
+                                    AddLine($"offset += {handler.Size}; // field size");
+                                }
+                            }
+                            else {
+                                AddLine($"// {fieldNode.GetFullName()} had unknown type {typeStr}");
+                            }
+                        }
+                        else if (node is AeroStringNode stringNode) {
+                            int length = 0;
+                            if (stringNode.Mode == AeroStringNode.Modes.LenTypePrefixed) {
+                                length = GetTypeSize(stringNode.PrefixTypeStr);
+                            }
+                            else if (stringNode.Mode == AeroStringNode.Modes.NullTerminated) {
+                                length = 1;
+                            }
+
+                            if (stringNode.Mode == AeroStringNode.Modes.Fixed) {
+                                AddLine($"offset += {stringNode.GetSize()}; // string");
+                            }
+                            else {
+                                AddLine($"offset += {length} + {stringNode.GetFullName()}.Length; // string");
+                            }
+                        }
+                        else if (node is AeroArrayNode arrayNode && arrayNode.IsFixedSize()) {
+                            var prefixLen = arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed
+                                ? GetTypeSize(arrayNode.PrefixTypeStr)
+                                : 0;
+                            
+                            AddLine($"offset += ({prefixLen}) + ({arrayNode.GetSize()} * {arrayNode.GetFullName()}.Length); // array non fixed {node.Name}");
+                            node.Nodes.Clear();
+                        }
+                        else if (node is AeroBlockNode && node.IsFixedSize()) {
+                            AddLine($"offset += {node.GetSize()}; // Fixed size block");
+                            node.Nodes.Clear();
+                        }
+                    });
+
+                AddLine("return offset;");
             }
-
-            AddLine();
         }
 
-        public virtual void CreateWriteType(string name, string typeStr, string castType = null)
+        public virtual void CreatePackerV2(ClassDeclarationSyntax cd)
         {
-            bool   wasHandled = true;
-            string typeCast   = castType != null ? $"({castType})" : "";
+            using (Function("public int Pack(Span<byte> buffer)")) {
+                AddLine("int offset = 0;");
+                AddLine();
+                
+                CreateLogicFlow(cd, 
+                    preNode: node =>
+                    {
+                        if (node is AeroArrayNode arrayNode) {
+                            CreateForFromNode(arrayNode, false , true);
+                        }
+                    },
+                    onNode: node =>
+                    {
+                        if (node is AeroFieldNode fieldNode) {
+                            AddWriter(fieldNode.GetFullName(),
+                                (fieldNode.IsEnum ? fieldNode.EnumStr : fieldNode.TypeStr).ToLower(),
+                                fieldNode.IsEnum ? fieldNode.EnumStr : null);
+                        }
+                        else if (node is AeroStringNode stringNode) {
+                            CreateStringWriter(stringNode, node);
+                        }
+                    });
+                
+                AddLine("return offset;");
+            }
+        }
+        
+        private void CreateStringReader(AeroStringNode stringNode, AeroNode node)
+        {
+            var readStringCall = "Encoding.UTF8.GetString";
+            var lenName        = $"{stringNode.Name}Len";
 
-            switch (typeStr) {
-                case "byte":
-                    AddLine($"buffer[offset] = {typeCast}{name};");
+            switch (stringNode.Mode) {
+                case AeroStringNode.Modes.Ref:
+                    AddLines($"{node.GetFullName()} = {readStringCall}(data.Slice(offset, {stringNode.RefFieldName}));",
+                        $"offset += {stringNode.RefFieldName};");
                     break;
-                case "char":
-                    AddLine($"buffer[offset] = {typeCast}((byte){name});");
-                    typeStr = "byte";
-                    break;
-                case "int":
-                    AddLine(
-                        $"BinaryPrimitives.WriteInt32LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
-                    break;
-                case "uint":
-                    AddLine(
-                        $"BinaryPrimitives.WriteUInt32LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
-                    break;
-                case "short":
-                    AddLine(
-                        $"BinaryPrimitives.WriteInt16LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
-                    break;
-                case "ushort":
-                    AddLine(
-                        $"BinaryPrimitives.WriteUInt16LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
-                    break;
-                case "double":
-                    AddLine(
-                        $"BinaryPrimitives.WriteDoubleLittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
-                    break;
-                case "float":
-                    AddLine(
-                        $"BinaryPrimitives.WriteSingleLittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
-                    break;
-                case "ulong":
-                    AddLine(
-                        $"BinaryPrimitives.WriteUInt64LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
-                    break;
-                case "long":
-                    AddLine(
-                        $"BinaryPrimitives.WriteInt64LittleEndian(buffer.Slice(offset, sizeof({typeStr})), {name});");
-                    break;
+                case AeroStringNode.Modes.LenTypePrefixed:
+                    if (TypeHandlers.TryGetValue(stringNode.PrefixTypeStr.ToLower(), out AeroTypeHandler handler)) {
+                        var sizeOfKey = handler.Size;
+                        AddLines($"{stringNode.PrefixTypeStr} {handler.Reader(lenName, null)}",
+                            $"offset += {sizeOfKey};",
+                            "",
+                            $"{node.GetFullName()} = {readStringCall}(data.Slice(offset, {lenName}));",
+                            $"offset += {lenName};");
+                    }
 
-                case "System.Numerics.Vector2":
-                    AddLines(
-                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",
-                        "offset += 8;");
-                    wasHandled = false;
                     break;
-                case "System.Numerics.Vector3":
-                    AddLines(
-                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);",
-                        "offset += 12;");
-                    wasHandled = false;
+                case AeroStringNode.Modes.Fixed:
+                    AddLines($"{node.GetFullName()} = {readStringCall}(data.Slice(offset, {stringNode.Length}));",
+                        $"offset += {stringNode.Length};");
                     break;
-                case "System.Numerics.Vector4":
-                case "System.Numerics.Quaternion":
-                    AddLines(
-                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);",
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);",
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);",
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 12, sizeof(float)), ref {name}.W);",
-                        "offset += 16;");
-                    wasHandled = false;
-                    break;
-
-                default:
-                    AddLine($"// Unhandled type {typeStr}");
-                    wasHandled = false;
+                case AeroStringNode.Modes.NullTerminated:
+                    var reachedEndName = $"{stringNode.Name}{stringNode.Depth}_ReachedEndOfSpan";
+                    AddLines($"int {lenName} = data.Slice(offset, data.Length - offset).IndexOf<byte>(0x00);",
+                        $"bool {reachedEndName} = {lenName} == -1;",
+                        $"{lenName} = {reachedEndName} ? (data.Length - offset) : {lenName};",
+                        $"{node.GetFullName()} = {readStringCall}(data.Slice(offset, {lenName}));",
+                        $"offset += {reachedEndName} ? {lenName} : ({lenName} + 1);");
                     break;
             }
+        }
+        
+        private void CreateStringWriter(AeroStringNode stringNode, AeroNode node)
+        {
+            var writeStringCall = "Encoding.UTF8.GetBytes";
+            var lenName        = $"{stringNode.Name}Len";
 
-            if (wasHandled) {
-                AddLine($"offset += sizeof({typeStr});");
+            switch (stringNode.Mode) {
+                case AeroStringNode.Modes.Ref:
+                case AeroStringNode.Modes.Fixed:
+                case AeroStringNode.Modes.NullTerminated:
+                    AddLines(
+                        $"var {stringNode.Name}Bytes = {writeStringCall}({stringNode.GetFullName()}).AsSpan();",
+                        $"{stringNode.Name}Bytes.CopyTo(buffer.Slice(offset, {stringNode.Name}Bytes.Length));");
+
+                    if (stringNode.Mode == AeroStringNode.Modes.NullTerminated) {
+                        AddLines($"buffer[offset + {stringNode.Name}Bytes.Length] = 0;",
+                            $"offset += ({stringNode.Name}Bytes.Length + 1);");
+                    }
+                    else {
+                        AddLine($"offset += {stringNode.Name}Bytes.Length;");
+                    }
+                    break;
+                case AeroStringNode.Modes.LenTypePrefixed:
+                    if (TypeHandlers.TryGetValue(stringNode.PrefixTypeStr.ToLower(), out AeroTypeHandler handler)) {
+                        var sizeOfKey = handler.Size;
+                        AddWriter($"{stringNode.GetFullName()}.Length", stringNode.PrefixTypeStr, stringNode.PrefixTypeStr);
+                        AddLines(
+                            $"var {stringNode.Name}Bytes = {writeStringCall}({stringNode.GetFullName()}).AsSpan();",
+                            $"{stringNode.Name}Bytes.CopyTo(buffer.Slice(offset, {stringNode.Name}Bytes.Length));",
+                            $"offset += {stringNode.Name}Bytes.Length;");
+                    }
+                    break;
             }
+        }
 
-            AddLine();
+        private void CreateForFromNode(AeroArrayNode arrayNode, bool createArray = true, bool addWriteLenPrefix = false)
+        {
+            var idxName      = $"idx{arrayNode.Depth}";
+            var firstSubNode = arrayNode.Nodes.FirstOrDefault(x => x is AeroFieldNode or AeroBlockNode or AeroStringNode);
+
+            switch (arrayNode.Mode) {
+                case AeroArrayNode.Modes.Ref:
+                    if (createArray) {
+                        AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{arrayNode.RefFieldName}];");
+                    }
+
+                    AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.RefFieldName}; {idxName}++)");
+                    break;
+                case AeroArrayNode.Modes.LenTypePrefixed:
+                    var prefixName = $"array{firstSubNode.Name}{arrayNode.Depth}Len";
+                    if (TypeHandlers.TryGetValue(arrayNode.PrefixTypeStr, out AeroTypeHandler handler)) {
+                        if (!addWriteLenPrefix) {
+                            AddLine($"var {handler.Reader(prefixName, null)}");
+                        }
+                        else {
+                            var lenName  = $"{arrayNode.GetFullName()}.Length";
+                            var typeName = $"({arrayNode.PrefixTypeStr})";
+                            AddLine($"{handler.Writer(lenName, typeName)}");
+                        }
+
+                        AddLine($"offset += {handler.Size};");
+                        AddLine();
+
+                        if (createArray) {
+                            AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{prefixName}];");
+                        }
+                        AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");
+                    }
+                    else {
+                        AddLine($"// Oh shit something went wrong and I couldn't read a type of {arrayNode.PrefixTypeStr} :<");
+                    }
+
+                    break;
+                case AeroArrayNode.Modes.Fixed:
+                    if (createArray) {
+                        AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{arrayNode.Length}];");
+                    }
+                    AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.Length}; {idxName}++)");
+                    break;
+            }
+        }
+
+        // Boiler plate code for creating the logic flow
+        private void CreateLogicFlow(ClassDeclarationSyntax cd, Action<AeroNode> preNode = null, Action<AeroNode> onNode = null, Action<AeroNode> postNode = null)
+        {
+            var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+
+            var lastDepth = 0;
+            var idx       = 0;
+            AeroSourceGraphGen.WalkTree(rootNode, node =>
+            {
+                if (node.IsRoot) return;
+                
+                if (lastDepth > node.Depth) {
+                    for (int i = 0; i < lastDepth - node.Depth; i++) {
+                        EndScope();
+                        AddLine();
+                    }
+                }
+
+                if (lastDepth < node.Depth) StartScope();
+                
+                if (node is AeroArrayNode aan) {
+                    AddLine($"// Array {aan.Mode}");
+                }
+                
+                preNode?.Invoke(node);
+                
+                if (node is AeroIfNode ain) {
+                    AddLine($"if ({ain.Statement})");
+                }
+
+                if (node is AeroBlockNode abn) {
+                    AddLine($"// Block {abn.Name}, Type: {abn.TypeStr}");
+                }
+
+                if (node is AeroFieldNode afn) {
+                    AddLine($"// Field: {afn.Name}, Type: {afn.TypeStr}, enum type: {afn.EnumStr}");
+                }
+
+                onNode?.Invoke(node);
+                postNode?.Invoke(node);
+
+                lastDepth = node.Depth;
+                idx++;
+            });
+            
+            for (int i = 0; i < lastDepth; i++) {
+                EndScope();
+            }
         }
     }
 }
