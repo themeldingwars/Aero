@@ -83,9 +83,9 @@ namespace Aero.Gen
         public int    Length;
         public string RefFieldName;
         public string PrefixTypeStr;
-        
+
         public override bool IsFixedSize() => GetSize() != -1;
-        
+
         public override int GetSize()
         {
             int combinedSize = 0;
@@ -93,6 +93,7 @@ namespace Aero.Gen
                 if (node.GetSize() == -1) {
                     return -1;
                 }
+
                 combinedSize += node.GetSize();
             }
 
@@ -107,13 +108,13 @@ namespace Aero.Gen
 
         public override bool IsFixedSize() => false;
 
-        public virtual int GetSize() => -1;
+        public override int GetSize() => -1;
     }
 
     public class AeroBlockNode : AeroNode
     {
         public override bool IsFixedSize() => GetSize() != -1;
-        
+
         public override int GetSize()
         {
             int combinedSize = 0;
@@ -121,6 +122,7 @@ namespace Aero.Gen
                 if (node.GetSize() == -1) {
                     return -1;
                 }
+
                 combinedSize += node.GetSize();
             }
 
@@ -159,9 +161,9 @@ namespace Aero.Gen
     {
         public class BuildTreeState
         {
-            public Dictionary<string, string> CastedNameToType = new ();
+            public Dictionary<string, string> CastedNameToType = new();
         }
-        
+
         public static AeroNode BuildTree(AeroSyntaxReceiver snr, ClassDeclarationSyntax cls) =>
             BuildTree(snr, AgUtils.GetClassFields(cls));
 
@@ -182,6 +184,8 @@ namespace Aero.Gen
             AeroNode currentNode = rootNode;
 
             foreach (var field in fields) {
+                AeroGenerator.LastCheckedField = field;
+
                 var fieldName = AgUtils.GetFieldName(field);
                 var sModel    = snr.Context.Compilation.GetSemanticModel(field.SyntaxTree);
                 var typeInfo  = sModel.GetTypeInfo(field.Declaration.Type).Type;
@@ -190,12 +194,12 @@ namespace Aero.Gen
                 // Ifs
                 var ifAttrs = AgUtils.GetAeroIfAttributes(field, sModel);
                 if (ifAttrs.Count > 0) {
-
                     var ifNode = new AeroIfNode
                     {
                         Statement = string.Join(" && ", ifAttrs.Select(x =>
                         {
-                            if (state.CastedNameToType.TryGetValue($"{currentNode.GetFullName()}.{x.Key}", out string typeName)) {
+                            if (state.CastedNameToType.TryGetValue($"{currentNode.GetFullName()}.{x.Key}",
+                                out string typeName)) {
                                 x.Values = x.Values.Select(y =>
                                 {
                                     var splitVals = y.Split('.');
@@ -206,11 +210,12 @@ namespace Aero.Gen
                                     return y;
                                 }).ToArray();
                             }
+
                             return x.GetIfStr(currentNode.GetFullName());
                         })),
-                        IfInfos   = ifAttrs.ToList(),
-                        Parent    = currentNode,
-                        Depth     = currentNode.Depth + 1
+                        IfInfos = ifAttrs.ToList(),
+                        Parent  = currentNode,
+                        Depth   = currentNode.Depth + 1
                     };
 
                     currentNode.Nodes.Add(ifNode);
@@ -220,6 +225,13 @@ namespace Aero.Gen
                 // Arrays
                 if (typeStr?.EndsWith("[]") ?? false) {
                     var arrayAttrData = AgUtils.GetArrayInfo(field);
+
+                    if (!arrayAttrData.IsArray) {
+                        snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.NoArrayAttributeError,
+                            field.GetLocation(), fieldName));
+                        break;
+                    }
+
                     var arrayNode = new AeroArrayNode
                     {
                         Mode          = ((AeroArrayNode.Modes) (int) arrayAttrData.ArrayMode),
@@ -275,6 +287,25 @@ namespace Aero.Gen
                     currentNode = rootNode;
                 }
                 else {
+                    // Is a class
+                    if (typeInfo.TypeKind == TypeKind.Class) {
+                        snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.ClassNotAllowedInAeroError,
+                            field.GetLocation(), fieldName, typeInfo.Name));
+                        break;
+                    }
+
+                    // Is a struct and not marked as an AeroBlock or a special type
+                    if (!AeroGenerator.SpecialCasesTypes.Contains(fieldType.ToLower())) {
+                        if ((typeInfo.TypeKind == TypeKind.Struct && typeInfo.SpecialType == SpecialType.None ||
+                             (typeInfo is IArrayTypeSymbol ats && ats.ElementType.TypeKind == TypeKind.Struct &&
+                              ats.ElementType.SpecialType                                  == SpecialType.None))) {
+                            snr.Context.ReportDiagnostic(Diagnostic.Create(
+                                AeroGenerator.StructNotMarkedAsAeroBlockError, field.GetLocation(), fieldName,
+                                fieldType));
+                            break;
+                        }
+                    }
+
                     // Kinda hacky :/ :<
                     if (currentNode?.Parent is AeroStringNode) {
                         currentNode.Parent.Name = fieldName;

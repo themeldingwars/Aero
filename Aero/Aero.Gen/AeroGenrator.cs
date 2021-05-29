@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
 namespace Aero.Gen
@@ -59,6 +60,8 @@ namespace Aero.Gen
 
     #endregion
 
+        public static FieldDeclarationSyntax LastCheckedField;
+        
         // These types have special case handlers to be treated like simpler value types
         public static readonly string[] SpecialCasesTypes = new[] { "system.numerics.vector2", "system.numerics.vector3", "system.numerics.vector4", "system.numerics.quaternion" };
 
@@ -97,7 +100,7 @@ namespace Aero.Gen
             }
             catch (Exception e)
             {
-                context.ReportDiagnostic(Diagnostic.Create(GenericError, Location.None, $"Error processing file {lastClassGenerated}: {e.ToString()} {e.Source}"));
+                context.ReportDiagnostic(Diagnostic.Create(GenericError, LastCheckedField != default ? LastCheckedField.GetLocation() : Location.None, $"Error processing file {lastClassGenerated}: {e.ToString()} {e.Source}"));
             }
         }
     }
