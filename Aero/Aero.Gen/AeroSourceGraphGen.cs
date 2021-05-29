@@ -250,7 +250,8 @@ namespace Aero.Gen
                 var fieldType = currentNode is AeroArrayNode
                     ? typeStr.TrimEnd(new[] {'[', ']'})
                     : typeStr;
-                var aeroBlock      = snr.GetAeroBLockOfName(null, fieldType);
+                var baseTypeName   = fieldType.Contains("<") ? fieldType.Split('<')[0] : fieldType;
+                var aeroBlock      = snr.GetAeroBLockOfName(null, baseTypeName);
                 var stringAttrData = AgUtils.GetStringInfo(field);
 
                 if (aeroBlock != null) {
@@ -295,13 +296,13 @@ namespace Aero.Gen
                     }
 
                     // Is a struct and not marked as an AeroBlock or a special type
-                    if (!AeroGenerator.SpecialCasesTypes.Contains(fieldType.ToLower())) {
+                    if (!AeroGenerator.SpecialCasesTypes.Contains(baseTypeName.ToLower())) {
                         if ((typeInfo.TypeKind == TypeKind.Struct && typeInfo.SpecialType == SpecialType.None ||
                              (typeInfo is IArrayTypeSymbol ats && ats.ElementType.TypeKind == TypeKind.Struct &&
                               ats.ElementType.SpecialType                                  == SpecialType.None))) {
                             snr.Context.ReportDiagnostic(Diagnostic.Create(
                                 AeroGenerator.StructNotMarkedAsAeroBlockError, field.GetLocation(), fieldName,
-                                fieldType));
+                                baseTypeName));
                             break;
                         }
                     }
