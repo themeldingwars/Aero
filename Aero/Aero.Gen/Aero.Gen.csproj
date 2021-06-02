@@ -9,12 +9,13 @@
         <Authors></Authors>
         <Company>The Melding Wars</Company>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageVersion>1.1.23</PackageVersion>
+        <PackageVersion>1.1.24</PackageVersion>
         <Description>A source genrator to serialise class and struct with minimal attributes efficently</Description>
         <PackageProjectUrl>https://github.com/themeldingwars/Aero</PackageProjectUrl>
         <PackageLicenseUrl>https://github.com/themeldingwars/Aero/blob/main/LICENSE</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/themeldingwars/Aero</RepositoryUrl>
         <PackageTags>TMW, Serialisation, Source Genrator</PackageTags>
+        <AssemblyVersion>1.1.24</AssemblyVersion>
     </PropertyGroup>
     
     <ItemGroup>
