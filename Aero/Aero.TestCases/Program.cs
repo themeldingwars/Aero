@@ -60,7 +60,7 @@ public class Test2
     public partial class TestCase1
     {
 
-        [AeroArray(2)]
+        [AeroArray(-4)]
         public TestSubDataOne[] ArrayTestTest;
 
         [AeroArray(4)]

@@ -7,6 +7,10 @@ namespace Aero.Gen.Attributes
     {
         public static string Name = "AeroArray";
 
+        public AeroArrayAttribute()
+        {
+        }
+        
         public AeroArrayAttribute(int length)
         {
         }

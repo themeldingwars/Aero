@@ -315,6 +315,9 @@ namespace Aero.Gen
                     AddLine("*/");
                 #endif
 
+                    AddNewFields(cd);
+                    AddLine();
+
                     CreateReaderV2(cd);
                     AddLine();
                     
@@ -348,6 +351,20 @@ namespace Aero.Gen
 
         public virtual void AddDiagLog(string msg) => AddLine(@$"LogDiag($""{msg}"");");
 
+        public virtual void AddNewFields(ClassDeclarationSyntax cd)
+        {
+            var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+            AeroSourceGraphGen.WalkTree(rootNode, node =>
+            {
+                // Store the amount of actually read items for a read to end array
+                if (node is AeroArrayNode arrayNode && arrayNode.Mode == AeroArrayNode.Modes.ReadToEnd ) {
+                    AddLine($"private int {node.Nodes.First().Name}Count = 0;");
+                    AddLine($"// Get the amount of read elements for {node.Nodes.First()}");
+                    AddLine($"public int Get{node.Nodes.First().Name}Count => {node.Nodes.First().Name}Count;");
+                }
+            });
+        }
+        
         public virtual void CreateReaderV2(ClassDeclarationSyntax cd)
         {
             using (Function("public int Unpack(ReadOnlySpan<byte> data)")) {
@@ -358,6 +375,10 @@ namespace Aero.Gen
                 preNode: node =>
                 {
                     if (node is AeroArrayNode arrayNode) {
+                        if (arrayNode.Mode == AeroArrayNode.Modes.ReadToEnd) {
+                            AddLine($"{arrayNode.Nodes.First().Name}Count = 0;");
+                        }
+                        
                         CreateForFromNode(arrayNode);
                     }
                 },
@@ -370,6 +391,12 @@ namespace Aero.Gen
                     }
                     else if (node is AeroStringNode stringNode) {
                         CreateStringReader(stringNode, node);
+                    }
+                    
+                    if (node?.Parent is AeroArrayNode arrayNode && arrayNode.Mode == AeroArrayNode.Modes.ReadToEnd && arrayNode.Nodes.Last().Index == node.Index) {
+                        var idxName = $"idx{arrayNode.Depth}";
+                        AddLine($"{idxName}++;");
+                        AddLine($"{arrayNode.Nodes.First().Name}Count++;"); // TODO: Move this to after the loop so its only one increment, awkward atm to know when we have just done a loops closing bracket
                     }
                 });
                 
@@ -595,6 +622,19 @@ namespace Aero.Gen
                         AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{arrayNode.Length}];");
                     }
                     AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.Length}; {idxName}++)");
+                    break;
+                
+                case AeroArrayNode.Modes.ReadToEnd:
+                    if (createArray) {
+                        AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{-arrayNode.Length}];");
+                        AddLine($"var {idxName} = 0;");
+                        AddLine("while (offset < data.Length)");
+                    }
+                    else {
+                        AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");
+                    }
+
+
                     break;
             }
         }

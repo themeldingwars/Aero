@@ -73,12 +73,16 @@ If a struct isn't marked with this it won't be serialised.
 
 ## ``[AeroArray]``
 Marks a field as an array, there are a few variants of this.
-* ``AeroArray(uint length)`` : eg ``[AeroArray(2)]`` Will read 2 values of the type of the array this is attached to
+* ``AeroArray(int length)`` : eg ``[AeroArray(2)]`` Will read 2 values of the type of the array this is attached to
 * ``AeroArray(string nameOfFeild)``: like the normal use only will take the length from the named field.
     * The named field must be a number type, eg, byte, short, int
     * Should use ``nameof`` eg ``[AeroArray(nameof(ArrayLen))]``
 * ``AeroArray(Type lengthType)`` read a number type of that type and use that for the length of the array
     * eg. ``AeroArray(typeof(uint))`` Will read a uint and then read that value number of elements.
+* ``AeroArray(int -length)`` : eg ``[AeroArray(-4)]`` If the fixed size is negative then the array will be crated with that number positive but will keep reading untill the end of the data is reached
+  * eg. ``[AeroArray(-4)] public int Test;`` will create an array of ints with a size of 4 and do a ``while(!hasReachedTheEnd)`` for reading
+  * The size given as the arg should be the max size that the array can have, it won't be resized
+  * There will be a ``Get[ArrayName]Count`` getter added that has the number of items that were read for this array.
 
 ## ``[AeroIf]``
 A field with this will be conditionally serialised if the logic passes.

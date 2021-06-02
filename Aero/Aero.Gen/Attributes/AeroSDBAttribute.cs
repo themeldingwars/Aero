@@ -4,7 +4,7 @@ namespace Aero.Gen.Attributes
 {
     // Used to mark a field as containing a value in the SDB
     [AttributeUsage(AttributeTargets.Field)]
-    public class AeroSdbAttribute
+    public class AeroSdbAttribute : Attribute
     {
         public static string Name = "AeroSdb";
         

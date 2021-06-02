@@ -15,6 +15,7 @@ namespace Aero.Gen
         public bool           IsRoot;
         public AeroNode       Parent;
         public List<AeroNode> Nodes = new();
+        public int            Index = 0;
 
         // Get the full name of this node in the list, eg test.test2.int;
         public string GetFullName(bool ingoreLastArray = false)
@@ -76,7 +77,8 @@ namespace Aero.Gen
         {
             Ref,
             LenTypePrefixed,
-            Fixed
+            Fixed,
+            ReadToEnd
         }
 
         public Modes  Mode;
@@ -162,6 +164,7 @@ namespace Aero.Gen
         public class BuildTreeState
         {
             public Dictionary<string, string> CastedNameToType = new();
+            public int                        Idx              = 0;
         }
 
         public static AeroNode BuildTree(AeroSyntaxReceiver snr, ClassDeclarationSyntax cls) =>
@@ -215,7 +218,8 @@ namespace Aero.Gen
                         })),
                         IfInfos = ifAttrs.ToList(),
                         Parent  = currentNode,
-                        Depth   = currentNode.Depth + 1
+                        Depth   = currentNode.Depth + 1,
+                        Index   = state.Idx++
                     };
 
                     currentNode.Nodes.Add(ifNode);
@@ -239,7 +243,8 @@ namespace Aero.Gen
                         RefFieldName  = arrayAttrData.KeyName,
                         PrefixTypeStr = arrayAttrData.KeyType,
                         Parent        = currentNode,
-                        Depth         = currentNode.Depth + 1
+                        Depth         = currentNode.Depth + 1,
+                        Index         = state.Idx++
                     };
 
                     currentNode.Nodes.Add(arrayNode);
@@ -260,7 +265,8 @@ namespace Aero.Gen
                         Parent  = currentNode,
                         Name    = fieldName,
                         TypeStr = fieldType,
-                        Depth   = currentNode.Depth + 1
+                        Depth   = currentNode.Depth + 1,
+                        Index   = state.Idx++
                     };
 
                     foreach (var structField in AgUtils.GetStructFields(aeroBlock)) {
@@ -281,7 +287,8 @@ namespace Aero.Gen
                         RefFieldName  = stringAttrData.KeyName,
                         PrefixTypeStr = stringAttrData.KeyType,
                         Parent        = currentNode,
-                        Depth         = currentNode.Depth + 1
+                        Depth         = currentNode.Depth + 1,
+                        Index         = state.Idx++
                     };
 
                     currentNode.Nodes.Add(stringNode);
@@ -321,7 +328,8 @@ namespace Aero.Gen
                                 typeInfo is INamedTypeSymbol ns ? ns.EnumUnderlyingType?.Name.ToLower() ?? "" : "",
                             IsEnum  = typeInfo?.TypeKind == TypeKind.Enum,
                             IsFlags = typeInfo?.GetAttributes().Any(x => x.AttributeClass.Name == "Flags") == true,
-                            Depth   = currentNode.Depth + 1
+                            Depth   = currentNode.Depth + 1,
+                            Index   = state.Idx++
                         };
 
                         var nodeFullName = fieldNode.GetFullName();
@@ -382,7 +390,7 @@ namespace Aero.Gen
                     sb.Append($"Unknown, {node}");
                 }
 
-                sb.AppendLine($" Depth: {node.Depth}");
+                sb.AppendLine($" Index: {node.Index}, Depth: {node.Depth}");
 
                 level++;
                 foreach (var subNode in node.Nodes) {

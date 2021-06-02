@@ -371,5 +371,26 @@ namespace Aero.UnitTests
 
             Assert.Fail();
         }
+        
+        [Test]
+        public void ReadToEndIntArrayTest()
+        {
+            var result = new byte[]
+            {
+                0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00
+            };
+            var bufferBytes = new byte[result.Length];
+            var test = new IntArrayReadToEndTest
+            {
+                ArrayTest = new []{ 1, 2, 3, 4 }
+            };
+
+            int bytesWritten = test.Pack(bufferBytes.AsSpan());
+            if (bytesWritten == result.Length && bufferBytes.SequenceEqual(result)) {
+                Assert.Pass();
+            }
+
+            Assert.Fail();
+        }
     }
 }

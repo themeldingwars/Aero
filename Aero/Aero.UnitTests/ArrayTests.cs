@@ -28,6 +28,13 @@ namespace Aero.UnitTests
     }
     
     [Aero]
+    public partial class IntArrayReadToEndTest
+    {
+        [AeroArray(-4)]
+        public int[] ArrayTest;
+    }
+    
+    [Aero]
     public partial class IntArrayTypeLenTest
     {
         [AeroArray(typeof(int))]
@@ -47,7 +54,7 @@ namespace Aero.UnitTests
         [AeroArray(2)]
         public ArrayBlockItem[] ArrayTest;
     }
-    
+
     [Aero]
     public partial class ArrayBlockItemArrayTypeLenTest
     {
@@ -75,6 +82,29 @@ namespace Aero.UnitTests
         public void IntArrayFixedTester()
         {
             var testObject = new IntArrayFixedTest();
+            if (testObject.Unpack(IntArrayFixedTestBytes.AsSpan()) > -1) {
+                if (testObject.ArrayTest.Length != 4) {
+                    Assert.Fail("Didn't read all the items in the array");
+                }
+
+                if (testObject.ArrayTest[0] == 1 &&
+                    testObject.ArrayTest[1] == 2 &&
+                    testObject.ArrayTest[2] == 3 &&
+                    testObject.ArrayTest[3] == 4) {
+                    Assert.Pass("Array read and values matched");
+                }
+                
+                Assert.Fail("Array values didn't match");
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
+        }
+        
+        [Test]
+        public void IntArrayReadToEndTester()
+        {
+            var testObject = new IntArrayReadToEndTest();
             if (testObject.Unpack(IntArrayFixedTestBytes.AsSpan()) > -1) {
                 if (testObject.ArrayTest.Length != 4) {
                     Assert.Fail("Didn't read all the items in the array");

@@ -185,6 +185,11 @@ namespace Aero.Gen
                     data.Length    = int.Parse(le.ToString());
                 }
 
+                if (args[0].Expression is PrefixUnaryExpressionSyntax pe) {
+                    data.ArrayMode = AeroArrayInfo.Mode.NullTerminated;
+                    data.Length    = int.Parse(pe.ToString());
+                }
+
                 if (args[0].Expression is TypeOfExpressionSyntax es && es.Type is PredefinedTypeSyntax pdt) {
                     data.ArrayMode = AeroArrayInfo.Mode.LengthType;
                     data.KeyType   = pdt.ToString();
