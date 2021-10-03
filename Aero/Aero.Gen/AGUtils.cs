@@ -30,7 +30,7 @@ namespace Aero.Gen
                 _                  => ""
             };
 
-            var op    = Op;
+            var op = Op;
             //var inner = Values.Select(x => isFlagsCheck ? $"({key} {opStr} {x}) {(op == Ops.HasFlag ? "!=" : "==")} 0" : $"{key} {opStr} {x}");
             var inner = Values.Select(x => isFlagsCheck ? $"({key} {opStr} {x}) {(op == Ops.HasFlag ? "!=" : "==")} 0" : $"{key} {opStr} {x}");
             return $"({string.Join(" || ", inner)})";
@@ -103,7 +103,7 @@ namespace Aero.Gen
         public static IEnumerable<T> NodesWithName<T>(SyntaxNode root, string name) where T : SyntaxNode =>
             root.DescendantNodes().Where(x => x is T node &&
                                               node.DescendantNodes().OfType<IdentifierNameSyntax>()
-                                                  .First().Identifier.Text == name).Select(x => (T) x);
+                                                  .First().Identifier.Text == name).Select(x => (T)x);
 
 
         public static AttributeSyntax GetAttributeByName(FieldDeclarationSyntax fd, string name) => NodeWithName<AttributeSyntax>(fd, name);
@@ -168,7 +168,7 @@ namespace Aero.Gen
             };
 
             var arrayAttr = NodeWithName<AttributeSyntax>(fd, AeroArrayAttribute.Name);
-            if (arrayAttr == null) return new AeroArrayInfo {IsArray = false};
+            if (arrayAttr == null) return new AeroArrayInfo { IsArray = false };
 
             var numArgs = arrayAttr.ArgumentList?.Arguments.Count ?? 0;
             if (numArgs == 1) {
@@ -198,7 +198,7 @@ namespace Aero.Gen
 
             return data;
         }
-        
+
         public static AeroArrayInfo GetStringInfo(FieldDeclarationSyntax fd)
         {
             var data = new AeroArrayInfo
@@ -207,7 +207,7 @@ namespace Aero.Gen
             };
 
             var arrayAttr = NodeWithName<AttributeSyntax>(fd, AeroStringAttribute.Name);
-            if (arrayAttr == null) return new AeroArrayInfo {IsArray = false};
+            if (arrayAttr == null) return new AeroArrayInfo { IsArray = false };
 
             var numArgs = arrayAttr.ArgumentList?.Arguments.Count ?? 0;
             if (numArgs == 1) {
@@ -235,6 +235,28 @@ namespace Aero.Gen
             }
 
             return data;
+        }
+
+        public static AeroMessageIdAttribute GetAeroMessageIdAttributeInfo(ClassDeclarationSyntax cd)
+        {
+            var atrributeInfo = NodeWithName<AttributeSyntax>(cd, AeroMessageIdAttribute.Name);
+            var numArgs       = atrributeInfo.ArgumentList?.Arguments.Count ?? 0;
+
+            if (numArgs >= 3) {
+                var msgType      = (AeroMessageIdAttribute.MsgType)Enum.Parse(typeof(AeroMessageIdAttribute.MsgType), atrributeInfo.ArgumentList.Arguments[0].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgType.", ""));
+                var msgSrc       = (AeroMessageIdAttribute.MsgSrc)Enum.Parse(typeof(AeroMessageIdAttribute.MsgSrc), atrributeInfo.ArgumentList.Arguments[1].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgSrc.", ""));
+                var messageId    = int.Parse(atrributeInfo.ArgumentList.Arguments[2].Expression.ToString());
+                int controllerId = -1;
+
+                if (numArgs >= 4) {
+                    messageId    = controllerId;
+                    controllerId = int.Parse(atrributeInfo.ArgumentList.Arguments[3].Expression.ToString());
+                }
+
+                return new AeroMessageIdAttribute(msgType, msgSrc, controllerId, messageId);
+            }
+
+            return null;
         }
 
         /*{

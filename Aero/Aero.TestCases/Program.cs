@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Aero.Gen;
+using Aero.Gen.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -121,6 +122,56 @@ public class Test2
         }
     }
 }
+
+[Aero]
+    [AeroMessageId(MsgType.Control, MsgSrc.Both, 1)]
+    public partial class ControlMsgBothTest1
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Both, 1)]
+    public partial class MatrixBothTest1
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Command, 2)]
+    public partial class MatrixMsgCmdTest2
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, 3)]
+    public partial class MatrixMsgTest3
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Both, 1)]
+    public partial class GssBothTest1
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Command, 2)]
+    public partial class GssMsgCmdTest2
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, 3)]
+    public partial class GssMsgTest3
+    {
+        
+    }
+
 }");
 
         public enum BitfieldMask : ulong
@@ -151,6 +202,8 @@ public class Test2
             /*foreach (var log in test.DiagLogs) {
                 Console.WriteLine(log);
             }*/
+
+            var msgHander1 = AeroRouting.GetNewMessageHandler(AeroMessageIdAttribute.MsgType.Matrix, AeroMessageIdAttribute.MsgSrc.Command, 2);
 
         }
         

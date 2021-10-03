@@ -4,8 +4,10 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
+using Aero.Gen;
 using Aero.Gen.Attributes;
 using static Aero.Gen.Attributes.AeroIfAttribute;
+using static Aero.Gen.Attributes.AeroMessageIdAttribute;
 
 namespace Aero.TestCases
 {
@@ -132,5 +134,54 @@ namespace Aero.TestCases
             //var strBytes = Encoding.ASCII.GetBytes(TestString).AsSpan();
             //strBytes.CopyTo(data.Slice(0, strBytes.Length));
         }
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.Control, MsgSrc.Both, 1)]
+    public partial class ControlMsgBothTest1
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Both, 1)]
+    public partial class MatrixBothTest1
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Command, 2)]
+    public partial class MatrixMsgCmdTest2
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, 3)]
+    public partial class MatrixMsgTest3
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Both, 1)]
+    public partial class GssBothTest1
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Command, 2)]
+    public partial class GssMsgCmdTest2
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, 3)]
+    public partial class GssMsgTest3
+    {
+        
     }
 }

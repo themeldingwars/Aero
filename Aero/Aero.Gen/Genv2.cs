@@ -308,8 +308,8 @@ namespace Aero.Gen
         public AgBlock Namespace(string nameSpaceName) => new(this,
             () => AddLine($"namespace {nameSpaceName}"));
 
-        public AgBlock Class(string className) => new(this,
-            () => AddLine($"public partial class {className}"));
+        public AgBlock Class(string className, string extra = "") => new(this,
+            () => AddLine($"public partial class {className} {extra}"));
 
         public AgBlock Function(string func) => new(this,
             () => AddLine(func));
@@ -346,7 +346,7 @@ namespace Aero.Gen
             AddUsings();
             AddLine();
             using (Namespace(ns)) {
-                using (Class(AgUtils.GetClassName(cd))) {
+                using (Class(AgUtils.GetClassName(cd), " : Aero.Gen.IAero")) {
                     if (Config.DiagLogging) AddDiagBoilerplate();
 
                 #if DEBUG
