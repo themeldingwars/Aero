@@ -237,26 +237,25 @@ namespace Aero.Gen
             return data;
         }
 
-        public static AeroMessageIdAttribute GetAeroMessageIdAttributeInfo(ClassDeclarationSyntax cd)
+        public static AeroMessageIdAttribute GetAeroMessageIdAttributeInfo(AttributeSyntax attributeSyantax)
         {
-            var atrributeInfo = NodeWithName<AttributeSyntax>(cd, AeroMessageIdAttribute.Name);
-            var numArgs       = atrributeInfo.ArgumentList?.Arguments.Count ?? 0;
+            var numArgs = attributeSyantax.ArgumentList?.Arguments.Count ?? 0;
 
-            if (numArgs >= 3) {
-                var msgType      = (AeroMessageIdAttribute.MsgType)Enum.Parse(typeof(AeroMessageIdAttribute.MsgType), atrributeInfo.ArgumentList.Arguments[0].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgType.", ""));
-                var msgSrc       = (AeroMessageIdAttribute.MsgSrc)Enum.Parse(typeof(AeroMessageIdAttribute.MsgSrc), atrributeInfo.ArgumentList.Arguments[1].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgSrc.", ""));
-                var messageId    = int.Parse(atrributeInfo.ArgumentList.Arguments[2].Expression.ToString());
-                int controllerId = -1;
+                if (numArgs >= 3) {
+                    var msgType      = (AeroMessageIdAttribute.MsgType) Enum.Parse(typeof(AeroMessageIdAttribute.MsgType), attributeSyantax.ArgumentList.Arguments[0].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgType.", ""));
+                    var msgSrc       = (AeroMessageIdAttribute.MsgSrc) Enum.Parse(typeof(AeroMessageIdAttribute.MsgSrc), attributeSyantax.ArgumentList.Arguments[1].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgSrc.", ""));
+                    var messageId    = int.Parse(attributeSyantax.ArgumentList.Arguments[2].Expression.ToString());
+                    int controllerId = -1;
 
-                if (numArgs >= 4) {
-                    messageId    = controllerId;
-                    controllerId = int.Parse(atrributeInfo.ArgumentList.Arguments[3].Expression.ToString());
+                    if (numArgs >= 4) {
+                        controllerId = messageId;
+                        messageId    = int.Parse(attributeSyantax.ArgumentList.Arguments[3].Expression.ToString());
+                    }
+
+                    return new AeroMessageIdAttribute(msgType, msgSrc, controllerId, messageId);
                 }
 
-                return new AeroMessageIdAttribute(msgType, msgSrc, controllerId, messageId);
-            }
-
-            return null;
+                return null;
         }
 
         /*{

@@ -2,7 +2,7 @@
 
 namespace Aero.Gen.Attributes
 {
-    [AttributeUsage(AttributeTargets.Class)]
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     public class AeroMessageIdAttribute : Attribute
     {
         public static string Name = "AeroMessageId";

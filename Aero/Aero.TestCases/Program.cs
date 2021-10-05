@@ -152,22 +152,43 @@ public class Test2
     }
     
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Both, 1)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Both, 1, 1)]
     public partial class GssBothTest1
     {
         
     }
     
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Command, 2)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Command, 1, 2)]
     public partial class GssMsgCmdTest2
     {
         
     }
     
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Message, 3)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, 1, 3)]
     public partial class GssMsgTest3
+    {
+        
+    }
+
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Both, 2, 1)]
+    public partial class GssBothTest4
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Command, 2, 2)]
+    public partial class GssMsgCmdTest5
+    {
+        
+    }
+    
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, 2, 3)]
+    public partial class GssMsgTest6
     {
         
     }

@@ -28,17 +28,20 @@ namespace Aero.Gen
                 ClassesToAugment.Add(cds);
                 AeroClasses.Add(cds);
                 
-                if (syntaxNode is ClassDeclarationSyntax cds2 && cds2.AttributeLists.Count > 0 && HasAttribute(cds2, AeroMessageIdAttribute.Name)) {
-                    var aeroMsgInfo = AgUtils.GetAeroMessageIdAttributeInfo(cds2);
-                    var asString    = aeroMsgInfo.GetAsString();
+                var attributeInfos = AgUtils.NodesWithName<AttributeSyntax>(cds, AeroMessageIdAttribute.Name).ToList();
+                if (attributeInfos.Any()) {
+                    foreach (var attributeInfo in attributeInfos) {
+                        var aeroMsgInfo = AgUtils.GetAeroMessageIdAttributeInfo(attributeInfo);
+                        var asString    = aeroMsgInfo.GetAsString();
 
-                    aeroMsgInfo.FullClassName = cds2.GetFullName();
+                        aeroMsgInfo.FullClassName = cds.GetFullName();
 
-                    if (AeroMessageIds.ContainsKey(asString)) {
-                        Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.MultipleMessageIdsForTheSameType, cds2.GetLocation(), asString));
-                    }
-                    else {
-                        AeroMessageIds.Add(asString, aeroMsgInfo);
+                        if (AeroMessageIds.ContainsKey(asString)) {
+                            Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.MultipleMessageIdsForTheSameType, cds.GetLocation(), asString));
+                        }
+                        else {
+                            AeroMessageIds.Add(asString, aeroMsgInfo);
+                        }
                     }
                 }
             }

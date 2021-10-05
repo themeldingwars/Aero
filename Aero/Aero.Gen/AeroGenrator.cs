@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -73,7 +75,7 @@ namespace Aero.Gen
         public static FieldDeclarationSyntax LastCheckedField;
 
         // These types have special case handlers to be treated like simpler value types
-        public static readonly string[] SpecialCasesTypes = new[] { "system.numerics.vector2", "system.numerics.vector3", "system.numerics.vector4", "system.numerics.quaternion" };
+        public static readonly string[] SpecialCasesTypes = new[] {"system.numerics.vector2", "system.numerics.vector3", "system.numerics.vector4", "system.numerics.quaternion"};
 
         public void Initialize(GeneratorInitializationContext context)
         {
@@ -86,7 +88,7 @@ namespace Aero.Gen
 
             try {
                 var config = AeroGenConfig.Load(context.AnalyzerConfigOptions.GlobalOptions);
-                var snRecv = (AeroSyntaxReceiver)context.SyntaxReceiver;
+                var snRecv = (AeroSyntaxReceiver) context.SyntaxReceiver;
                 snRecv.Context = context;
 
                 if (config.Enabled) {
@@ -141,6 +143,21 @@ namespace Aero.Gen
         private string CreateRouting(AeroSyntaxReceiver snRecv, AeroGenConfig config)
         {
             var sb = new StringBuilder();
+
+            void AddPacketSwitch(IEnumerable<AeroMessageIdAttribute> msgs)
+            {
+                AddLineAndIndent(sb, "IAero msg = messageId switch {");
+                {
+                    foreach (var msg in msgs) {
+                        AddLine(sb, $"{msg.MessageId} => new {msg.FullClassName}(),");
+                    }
+                    
+                    AddLine(sb, $"_ => null,");
+                }
+                UnIndentAndAddLine(sb, "};");
+                AddLine(sb, "return msg;");
+            }
+
             AddLine(sb, "using System;");
             AddLine(sb, "using Aero.Gen;");
             AddLine(sb, "using Aero.Gen.Attributes;");
@@ -154,88 +171,67 @@ namespace Aero.Gen
                 {
                     AddLineAndIndent(sb, "if (typ == AeroMessageIdAttribute.MsgType.Control) {");
                     {
-                        AddLineAndIndent(sb, "IAero controlMsg = messageId switch {");
+                        var controllMsgs = snRecv.AeroMessageIds.Values.Where(x => x.Typ == AeroMessageIdAttribute.MsgType.Control);
+                        AddPacketSwitch(controllMsgs);
+
+                        UnIndentAndAddLine(sb, "}");
+                        AddLineAndIndent(sb, "else if (typ == AeroMessageIdAttribute.MsgType.Matrix) {");
                         {
-                            var controllMsgs = snRecv.AeroMessageIds.Values.Where(x => x.Typ == AeroMessageIdAttribute.MsgType.Control);
-                            foreach (var controllMsg in controllMsgs) {
-                                AddLine(sb, $"{controllMsg.MessageId} => new {controllMsg.FullClassName}(),");
-                            }
-
-                            UnIndentAndAddLine(sb, "};");
-                            AddLine(sb, "return controlMsg;");
-
-                            UnIndentAndAddLine(sb, "}");
-                            AddLineAndIndent(sb, "else if (typ == AeroMessageIdAttribute.MsgType.Matrix) {");
+                            AddLineAndIndent(sb, "if (src == AeroMessageIdAttribute.MsgSrc.Command || src == AeroMessageIdAttribute.MsgSrc.Both) {");
                             {
-                                AddLineAndIndent(sb, "if (src == AeroMessageIdAttribute.MsgSrc.Command || src == AeroMessageIdAttribute.MsgSrc.Both) {");
-                                {
-                                    AddLineAndIndent(sb, "IAero msg = messageId switch {");
-                                    {
-                                        var msgs = snRecv.AeroMessageIds.Values.Where(x => x.Typ == AeroMessageIdAttribute.MsgType.Matrix && x.Src is AeroMessageIdAttribute.MsgSrc.Command or AeroMessageIdAttribute.MsgSrc.Both);
-                                        foreach (var msg in msgs) {
-                                            AddLine(sb, $"{msg.MessageId} => new {msg.FullClassName}(),");
-                                        }
-                                    }
-                                    UnIndentAndAddLine(sb, "};");
-                                    AddLine(sb, "return msg;");
-                                }
-                                UnIndentAndAddLine(sb, "}");
-
-                                AddLineAndIndent(sb, "else if (src == AeroMessageIdAttribute.MsgSrc.Message || src == AeroMessageIdAttribute.MsgSrc.Both) {");
-                                {
-                                    AddLineAndIndent(sb, "IAero msg = messageId switch {");
-                                    {
-                                        var msgs = snRecv.AeroMessageIds.Values.Where(x => x.Typ == AeroMessageIdAttribute.MsgType.Matrix && x.Src is AeroMessageIdAttribute.MsgSrc.Message or AeroMessageIdAttribute.MsgSrc.Both);
-                                        foreach (var msg in msgs) {
-                                            AddLine(sb, $"{msg.MessageId} => new {msg.FullClassName}(),");
-                                        }
-                                    }
-                                    UnIndentAndAddLine(sb, "};");
-                                    AddLine(sb, "return msg;");
-                                }
-                                UnIndentAndAddLine(sb, "}");
+                                var msgs = snRecv.AeroMessageIds.Values.Where(x => x.Typ == AeroMessageIdAttribute.MsgType.Matrix && x.Src is AeroMessageIdAttribute.MsgSrc.Command or AeroMessageIdAttribute.MsgSrc.Both);
+                                AddPacketSwitch(msgs);
                             }
                             UnIndentAndAddLine(sb, "}");
-                            
-                            AddLineAndIndent(sb, "else if (typ == AeroMessageIdAttribute.MsgType.GSS) {");
+
+                            AddLineAndIndent(sb, "else if (src == AeroMessageIdAttribute.MsgSrc.Message || src == AeroMessageIdAttribute.MsgSrc.Both) {");
                             {
-                                AddLineAndIndent(sb, "if (src == AeroMessageIdAttribute.MsgSrc.Command || src == AeroMessageIdAttribute.MsgSrc.Both) {");
-                                {
-                                    AddLineAndIndent(sb, "IAero msg = messageId switch {");
-                                    {
-                                        var msgs = snRecv.AeroMessageIds.Values.Where(x => x.Typ == AeroMessageIdAttribute.MsgType.GSS && x.Src is AeroMessageIdAttribute.MsgSrc.Command or AeroMessageIdAttribute.MsgSrc.Both);
-                                        foreach (var msg in msgs) {
-                                            AddLine(sb, $"{msg.MessageId} => new {msg.FullClassName}(),");
-                                        }
-                                    }
-                                    UnIndentAndAddLine(sb, "};");
-                                    AddLine(sb, "return msg;");
-                                }
-                                UnIndentAndAddLine(sb, "}");
-
-                                AddLineAndIndent(sb, "else if (src == AeroMessageIdAttribute.MsgSrc.Message || src == AeroMessageIdAttribute.MsgSrc.Both) {");
-                                {
-                                    AddLineAndIndent(sb, "IAero msg = messageId switch {");
-                                    {
-                                        var msgs = snRecv.AeroMessageIds.Values.Where(x => x.Typ == AeroMessageIdAttribute.MsgType.GSS && x.Src is AeroMessageIdAttribute.MsgSrc.Message or AeroMessageIdAttribute.MsgSrc.Both);
-                                        foreach (var msg in msgs) {
-                                            AddLine(sb, $"{msg.MessageId} => new {msg.FullClassName}(),");
-                                        }
-                                    }
-                                    UnIndentAndAddLine(sb, "};");
-                                    AddLine(sb, "return msg;");
-                                }
-                                UnIndentAndAddLine(sb, "}");
+                                var msgs = snRecv.AeroMessageIds.Values.Where(x => x.Typ == AeroMessageIdAttribute.MsgType.Matrix && x.Src is AeroMessageIdAttribute.MsgSrc.Message or AeroMessageIdAttribute.MsgSrc.Both);
+                                AddPacketSwitch(msgs);
                             }
                             UnIndentAndAddLine(sb, "}");
-
-                            AddLine(sb, "return null;");
                         }
                         UnIndentAndAddLine(sb, "}");
+
+                        AddLineAndIndent(sb, "else if (typ == AeroMessageIdAttribute.MsgType.GSS) {");
+                        {
+                            AddLineAndIndent(sb, "if (src == AeroMessageIdAttribute.MsgSrc.Command || src == AeroMessageIdAttribute.MsgSrc.Both) {");
+                            {
+                                var controllerMsgs = snRecv.AeroMessageIds.Values.Where(x => x.Typ == AeroMessageIdAttribute.MsgType.GSS &&
+                                                                                             x.Src is AeroMessageIdAttribute.MsgSrc.Command or AeroMessageIdAttribute.MsgSrc.Both).GroupBy(x => x.ControllerId);
+                                foreach (var msgs in controllerMsgs) {
+                                    AddLineAndIndent(sb, $"if (controllerId == {msgs.First().ControllerId}) {{");
+                                    {
+                                        AddPacketSwitch(msgs);
+                                    }
+                                    UnIndentAndAddLine(sb, "}");
+                                }
+                            }
+                            UnIndentAndAddLine(sb, "}");
+
+                            AddLineAndIndent(sb, "else if (src == AeroMessageIdAttribute.MsgSrc.Message || src == AeroMessageIdAttribute.MsgSrc.Both) {");
+                            {
+                                var controllerMsgs = snRecv.AeroMessageIds.Values.Where(x => x.Typ == AeroMessageIdAttribute.MsgType.GSS &&
+                                                                                             x.Src is AeroMessageIdAttribute.MsgSrc.Message or AeroMessageIdAttribute.MsgSrc.Both).GroupBy(x => x.ControllerId);
+                                foreach (var msgs in controllerMsgs) {
+                                    AddLineAndIndent(sb, $"if (controllerId == {msgs.First().ControllerId}) {{");
+                                    {
+                                        AddPacketSwitch(msgs);
+                                    }
+                                    UnIndentAndAddLine(sb, "}");
+                                }
+                            }
+                            UnIndentAndAddLine(sb, "}");
+                        }
+                        UnIndent();
+                        AddLine(sb, "}");
+                        
+                        AddLine(sb, "return null;");
+                        
+                        UnIndentAndAddLine(sb, "}");
+                        UnIndentAndAddLine(sb, "}");
+                        return sb.ToString();
                     }
-                    UnIndent();
-                    AddLine(sb, "}");
-                    return sb.ToString();
                 }
             }
         }
