@@ -62,6 +62,21 @@ namespace Aero.UnitTests
         [AeroString(typeof(byte))]public string[] TestString;
     }
 
+    [Aero]
+    public partial class StringRefLengthContainer
+    {
+        public StringRefLengthTest StrContainer;
+    }
+
+    [AeroBlock]
+    public struct StringRefLengthTest
+    {
+        public int Length;
+
+        [AeroString(nameof(Length))]
+        public string Str;
+    }
+
     public class StringTests
     {
         [SetUp]
@@ -249,6 +264,33 @@ namespace Aero.UnitTests
                 }
                 else {
                     Assert.Fail("Values didn't match");
+                }
+            }
+            else {
+                Assert.Fail();
+            }
+        }
+        
+        [Test]
+        public void StringRefLengthContainerTester()
+        {
+            ReadOnlySpan<byte> data = new byte[]
+            {
+                0x07, 0x00, 0x00, 0x00,
+                0x74, 0x65, 0x73, 0x74, 0x79, 0x61, 0x79
+            };
+            var test = new StringRefLengthContainer();
+            if (test.Unpack(data) > 0) {
+                if (test.StrContainer.Length == 7 && test.StrContainer.Str.Length == 7) {
+                    if (test.StrContainer.Str == "testyay") {
+                        Assert.Pass();
+                    }
+                    else {
+                        Assert.Fail("String didn't match");
+                    }
+                }
+                else {
+                    Assert.Fail("String lengths didn't match.");
                 }
             }
             else {

@@ -69,6 +69,23 @@ namespace Aero.UnitTests
         public Vector2[] Vector2Test;
     }
 
+    [Aero]
+    public partial class AeroBlockWithSeparateArrayCountContainer
+    {
+        public int Test;
+
+        public AeroBlockWithSeparateArrayCount ArrayContainer;
+    }
+
+    [AeroBlock]
+    public struct AeroBlockWithSeparateArrayCount
+    {
+        public int Count;
+
+        [AeroArray(nameof(Count))]
+        public uint[] Items;
+    }
+
     public class ArrayTests
     {
         [SetUp]
@@ -237,6 +254,27 @@ namespace Aero.UnitTests
                 }
 
                 Assert.Fail("Array values didn't match");
+            }
+            else {
+                Assert.Fail("Didn't read all fields");
+            }
+        }
+        
+        [Test]
+        public void AeroBlockWithSeprateArrayCountContainerTester()
+        {
+            ReadOnlySpan<byte> data       = new byte[] { 0x0A, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00 };
+            var                testObject = new AeroBlockWithSeparateArrayCountContainer();
+            if (testObject.Unpack(data) > -1) {
+                if (testObject.Test != 10) {
+                    Assert.Fail("Test value didn't match");
+                }
+
+                if (testObject.ArrayContainer.Count == 2 && testObject.ArrayContainer.Items[0] == 1 && testObject.ArrayContainer.Items[1] == 2) {
+                    Assert.Pass();
+                }
+
+                Assert.Fail("Values didn't match");
             }
             else {
                 Assert.Fail("Didn't read all fields");

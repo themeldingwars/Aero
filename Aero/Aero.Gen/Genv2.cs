@@ -563,8 +563,10 @@ namespace Aero.Gen
 
             switch (stringNode.Mode) {
                 case AeroStringNode.Modes.Ref:
-                    AddLines($"{node.GetFullName()} = {readStringCall}(data.Slice(offset, {stringNode.RefFieldName}));",
-                        $"offset += {stringNode.RefFieldName};");
+                    var refFullName = $"{stringNode.Parent.GetFullName()}.{stringNode.RefFieldName}".TrimStart('.');
+                    
+                    AddLines($"{node.GetFullName()} = {readStringCall}(data.Slice(offset, {refFullName}));",
+                        $"offset += {refFullName};");
                     break;
                 case AeroStringNode.Modes.LenTypePrefixed:
                     if (TypeHandlers.TryGetValue(stringNode.PrefixTypeStr.ToLower(), out AeroTypeHandler handler)) {
@@ -637,12 +639,14 @@ namespace Aero.Gen
 
             switch (arrayNode.Mode) {
                 case AeroArrayNode.Modes.Ref:
+                    var refFullName = $"{arrayNode.Parent.GetFullName()}.{arrayNode.RefFieldName}".TrimStart('.');
+                    
                     if (createArray) {
                         AddLine(
-                            $"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{arrayNode.RefFieldName}];");
+                            $"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{refFullName}];");
                     }
 
-                    AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.RefFieldName}; {idxName}++)");
+                    AddLine($"for (int {idxName} = 0; {idxName} < {refFullName}; {idxName}++)");
                     break;
                 case AeroArrayNode.Modes.LenTypePrefixed:
                     var prefixName = $"array{firstSubNode.Name}{arrayNode.Depth}Len";
