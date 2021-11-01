@@ -117,5 +117,24 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
+        
+        [Test]
+        public void BlockWithArraysLenTest()
+        {
+            var test = new BlockWithArraysLenTest
+            {
+                BlockOfAnArray = new BlockOfAnArray
+                {
+                    Arr = new byte [100]
+                }
+            };
+            var packedSize = test.GetPackedSize();
+            if (packedSize == 100) {
+                Assert.Pass();
+            }
+            else {
+                Assert.Fail();
+            }
+        }
     }
 }

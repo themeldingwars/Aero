@@ -508,13 +508,18 @@ namespace Aero.Gen
                                 AddLine($"offset += {length} + {stringNode.GetFullName()}.Length; // string");
                             }
                         }
-                        else if (node is AeroArrayNode arrayNode && arrayNode.IsFixedSize()) {
+                        else if (node is AeroArrayNode arrayNode && arrayNode.IsFixedSize() && arrayNode.Mode != AeroArrayNode.Modes.Fixed) {
                             var prefixLen = arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed
                                 ? GetTypeSize(arrayNode.PrefixTypeStr)
                                 : 0;
 
                             AddLine(
                                 $"offset += ({prefixLen}) + ({arrayNode.GetSize()} * {arrayNode.GetFullName()}.Length); // array non fixed {node.Name}");
+                            node.Nodes.Clear();
+                        }
+                        else if (node is AeroArrayNode arrayNode2 && arrayNode2.IsFixedSize()) {
+                            AddLine(
+                                $"offset += {arrayNode2.GetSize()}; // array fixed {node.Name}");
                             node.Nodes.Clear();
                         }
                         else if (node is AeroBlockNode && node.IsFixedSize()) {

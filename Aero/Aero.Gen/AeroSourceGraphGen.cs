@@ -90,6 +90,14 @@ namespace Aero.Gen
 
         public override int GetSize()
         {
+            if (Mode == Modes.Fixed && (Nodes[0] is AeroFieldNode || (Nodes[0].IsFixedSize()))) {
+                return Nodes[0].GetSize() * Math.Abs(Length);
+            }
+            
+            if (Nodes[0] is AeroFieldNode) {
+                return Nodes[0].GetSize();
+            }
+            
             int combinedSize = 0;
             foreach (var node in Nodes) {
                 if (node.GetSize() == -1) {

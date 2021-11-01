@@ -55,11 +55,20 @@ namespace Aero.TestCases
         public TestSubDataOne SubDataTwo;
     }
 
+    [AeroBlock]
+    public struct ArrayInStruct
+    {
+        [AeroArray(100)]
+        public byte[] Arr;
+    }
+
 public class Test2
 {
     [Aero]
     public partial class TestCase1
     {
+
+        public ArrayInStruct ArrayInStructTest;
 
         [AeroArray(-4)]
         public TestSubDataOne[] ArrayTestTest;

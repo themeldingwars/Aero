@@ -61,7 +61,20 @@ namespace Aero.UnitTests
         [AeroArray(typeof(int))]
         public ArrayBlockItem[] ArrayTest;
     }
-    
+
+    [Aero]
+    public partial class BlockWithArraysLenTest
+    {
+        public BlockOfAnArray BlockOfAnArray;
+    }
+
+    [AeroBlock]
+    public struct BlockOfAnArray
+    {
+        [AeroArray(100)]
+        public byte[] Arr;
+    }
+
     [Aero]
     public partial class ArrayOfVector2sFixedTest
     {
