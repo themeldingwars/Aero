@@ -7,5 +7,12 @@ namespace Aero.Gen.Attributes
     {
         public static string Name = "Aero";
 
+        public bool IsView = false;
+
+        public AeroAttribute(bool isView = false)
+        {
+            IsView = isView;
+        }
+
     }
 }

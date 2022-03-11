@@ -12,7 +12,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Aero.Gen
 {
-    public class Genv2
+    public partial class Genv2
     {
         public    GeneratorExecutionContext Context;
         public    AeroGenConfig             Config;
@@ -34,6 +34,7 @@ namespace Aero.Gen
             UsingsToAdd.Add("System.Runtime.InteropServices");
             UsingsToAdd.Add("System.Text");
             UsingsToAdd.Add("System.Numerics");
+            UsingsToAdd.Add("System.Runtime.CompilerServices");
         }
 
         public class AeroTypeHandler
@@ -316,9 +317,33 @@ namespace Aero.Gen
 
         public AgBlock If(string ifStr) => new(this,
             () => AddLine($"if ({ifStr}) {{"), noOpenBracket: true);
+        
+        public AgBlock ElseIf(string ifStr) => new(this,
+            () => AddLine($"else if ({ifStr}) {{"), noOpenBracket: true);
+        
+        public AgBlock Else() => new(this,
+            () => AddLine($"else {{"), noOpenBracket: true);
 
         public AgBlock ForLen(string typeLen, string length, string indexName = "i") => new(this,
             () => AddLine($"for({typeLen} {indexName} = 0; {indexName} < {length}; {indexName}++)"));
+
+        public AgBlock DoWhile(string caseStr) => new(this,
+            () => AddLine("do"), () =>
+            {
+                UnIndent();
+                AddLine($"}} while({caseStr});");
+
+                return false;
+            });
+        
+        public AgBlock Switch(string value) => new(this,
+            () => AddLine($"switch ({value})"), () =>
+            {
+                UnIndent();
+                AddLine("}");
+                
+                return false;
+            });
 
         public void StartScope()
         {
@@ -339,6 +364,7 @@ namespace Aero.Gen
         {
             var fileName = $"{AgUtils.GetClassName(cd)}.Aero.cs";
             var ns       = AgUtils.GetNamespace(cd);
+            var sm       = SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree);
 
             AddLines(
                 $"// Aero Generated file, not a not a good idea to edit :>",
@@ -348,15 +374,20 @@ namespace Aero.Gen
             using (Namespace(ns)) {
                 using (Class(AgUtils.GetClassName(cd), " : Aero.Gen.IAero")) {
                     if (Config.DiagLogging) AddDiagBoilerplate();
+                    
+                    var isViewClass = AgUtils.IsViewClass(cd, sm);
 
                 #if DEBUG
                     AddLine("/*");
-                    var treeRootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                    var treeRootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd, isViewClass);
                     AddLine(AeroSourceGraphGen.PrintTree(treeRootNode));
                     AddLine("*/");
                 #endif
 
                     AddNewFields(cd);
+                    if (isViewClass) {
+                        GenerateViewClassMembers(cd, sm);
+                    }
                     AddLine();
 
                     CreateReaderV2(cd);
@@ -367,6 +398,10 @@ namespace Aero.Gen
 
                     CreatePackerV2(cd);
                     AddLine();
+
+                    if (isViewClass) {
+                        GenerateViewFunctions(cd, sm);
+                    }
                 }
             }
 
@@ -412,39 +447,68 @@ namespace Aero.Gen
                 AddLine("int offset = 0;");
                 AddLine();
 
-                CreateLogicFlow(cd,
-                    preNode: node =>
-                    {
-                        if (node is AeroArrayNode arrayNode) {
-                            if (arrayNode.Mode == AeroArrayNode.Modes.ReadToEnd) {
-                                AddLine($"{arrayNode.Nodes.First().Name}Count = 0;");
-                            }
+                var isView = AgUtils.IsViewClass(cd, SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree));
+                if (isView) {
+                    AddLine("// Nullable bitfields fields");
+                    GenerateViewNullableFieldUnpacker(GetNumNullableFields(cd));
+                    AddLine();
+                }
 
-                            CreateForFromNode(arrayNode);
-                        }
-                    },
-                    onNode: node =>
-                    {
-                        if (node is AeroFieldNode fieldNode) {
-                            AddReader(fieldNode.GetFullName(),
-                                (fieldNode.IsEnum ? fieldNode.EnumStr : fieldNode.TypeStr).ToLower(),
-                                fieldNode.IsEnum ? fieldNode.TypeStr : null);
-                        }
-                        else if (node is AeroStringNode stringNode) {
-                            CreateStringReader(stringNode, node);
-                        }
-
-                        if (node?.Parent is AeroArrayNode arrayNode                       &&
-                            arrayNode.Mode               == AeroArrayNode.Modes.ReadToEnd &&
-                            arrayNode.Nodes.Last().Index == node.Index) {
-                            var idxName = $"idx{arrayNode.Depth}";
-                            AddLine($"{idxName}++;");
-                            AddLine(
-                                $"{arrayNode.Nodes.First().Name}Count++;"); // TODO: Move this to after the loop so its only one increment, awkward atm to know when we have just done a loops closing bracket
-                        }
-                    });
+                var nullableIdx = 0;
+                var rootNode    = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                CreateLogicFlow(rootNode,
+                    CreateUnpackerPreNode,
+                    node => { CreateUnpackerOnNode(isView, node, ref nullableIdx); });
 
                 AddLine("return offset;");
+            }
+        }
+
+        private int CreateUnpackerOnNode(bool isView, AeroNode node, ref int nullableIdx)
+        {
+            if (isView && node.IsNullable) {
+                AddLine($"if ({GenerateViewFieldIdx(nullableIdx++)}) {{");
+                Indent();
+            }
+
+            if (node is AeroFieldNode fieldNode) {
+                var name = fieldNode.GetFullName();
+                if (node.Parent?.Parent is {IsNullable: true, IsRoot: false}) {
+                    name = $"{node.Parent.GetFullName()}.Value.{node.Name}";
+                }
+                AddReader(name,
+                    (fieldNode.IsEnum ? fieldNode.EnumStr : fieldNode.TypeStr).ToLower(),
+                    fieldNode.IsEnum ? fieldNode.TypeStr : null);
+            }
+            else if (node is AeroStringNode stringNode) {
+                CreateStringReader(stringNode, node);
+            }
+
+            if (node?.Parent is AeroArrayNode arrayNode                       &&
+                arrayNode.Mode               == AeroArrayNode.Modes.ReadToEnd &&
+                arrayNode.Nodes.Last().Index == node.Index) {
+                var idxName = $"idx{arrayNode.Depth}";
+                AddLine($"{idxName}++;");
+                AddLine(
+                    $"{arrayNode.Nodes.First().Name}Count++;"); // TODO: Move this to after the loop so its only one increment, awkward atm to know when we have just done a loops closing bracket
+            }
+
+            if (isView && node.IsNullable) {
+                UnIndent();
+                AddLine("}");
+            }
+
+            return nullableIdx;
+        }
+
+        private void CreateUnpackerPreNode(AeroNode node)
+        {
+            if (node is AeroArrayNode arrayNode) {
+                if (arrayNode.Mode == AeroArrayNode.Modes.ReadToEnd) {
+                    AddLine($"{arrayNode.Nodes.First().Name}Count = 0;");
+                }
+
+                CreateForFromNode(arrayNode);
             }
         }
 
@@ -453,82 +517,95 @@ namespace Aero.Gen
             using (Function("public int GetPackedSize()")) {
                 AddLine("int offset = 0;");
                 AddLine();
+                
+                var isView = AgUtils.IsViewClass(cd, SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree));
+                if (isView) {
+                    AddLine("// Nullable bitfields fields");
+                    var numNullableBitFields = Math.Ceiling((double)GetNumNullableFields(cd) / 8);
+                    AddLine($"offset += {numNullableBitFields};");
+                    AddLine();
+                }
 
                 var combinedSize = 0;
-                CreateLogicFlow(cd,
-                    preNode: node =>
-                    {
-                        if (node is AeroArrayNode arrayNode && !arrayNode.IsFixedSize()) {
-                            var idxName = $"idx{arrayNode.Depth}";
-                            AddLine(
-                                $"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");
-                        }
-
-                        /*
-                        if (node.IsFixedSize()) {
-                            combinedSize += node.GetSize();
-                        }
-
-                        if (combinedSize > 0 && node is AeroIfNode) {
-                            AddLine($"offset += {combinedSize}; // combined size");
-                            combinedSize = 0;
-                        }
-                        */
-                    },
-                    onNode: node =>
-                    {
-                        if (node is AeroFieldNode fieldNode) {
-                            var typeStr = fieldNode.IsEnum ? fieldNode.EnumStr.ToLower() : fieldNode.TypeStr.ToLower();
-                            if (TypeHandlers.TryGetValue(typeStr, out AeroTypeHandler handler)) {
-                                if (!node.Parent.IsRoot && node.Parent is AeroArrayNode farrayNode &&
-                                    farrayNode.Mode == AeroArrayNode.Modes.Fixed) {
-                                    AddLine($"offset += {handler.Size * farrayNode.Length}; // array fixed");
-                                }
-                                else {
-                                    AddLine($"offset += {handler.Size}; // field size");
-                                }
-                            }
-                            else {
-                                AddLine($"// {fieldNode.GetFullName()} had unknown type {typeStr}");
-                            }
-                        }
-                        else if (node is AeroStringNode stringNode) {
-                            int length = 0;
-                            if (stringNode.Mode == AeroStringNode.Modes.LenTypePrefixed) {
-                                length = GetTypeSize(stringNode.PrefixTypeStr);
-                            }
-                            else if (stringNode.Mode == AeroStringNode.Modes.NullTerminated) {
-                                length = 1;
-                            }
-
-                            if (stringNode.Mode == AeroStringNode.Modes.Fixed) {
-                                AddLine($"offset += {stringNode.GetSize()}; // string");
-                            }
-                            else {
-                                AddLine($"offset += {length} + {stringNode.GetFullName()}.Length; // string");
-                            }
-                        }
-                        else if (node is AeroArrayNode arrayNode && arrayNode.IsFixedSize() && arrayNode.Mode != AeroArrayNode.Modes.Fixed) {
-                            var prefixLen = arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed
-                                ? GetTypeSize(arrayNode.PrefixTypeStr)
-                                : 0;
-
-                            AddLine(
-                                $"offset += ({prefixLen}) + ({arrayNode.GetSize()} * {arrayNode.GetFullName()}.Length); // array non fixed {node.Name}");
-                            node.Nodes.Clear();
-                        }
-                        else if (node is AeroArrayNode arrayNode2 && arrayNode2.IsFixedSize()) {
-                            AddLine(
-                                $"offset += {arrayNode2.GetSize()}; // array fixed {node.Name}");
-                            node.Nodes.Clear();
-                        }
-                        else if (node is AeroBlockNode && node.IsFixedSize()) {
-                            AddLine($"offset += {node.GetSize()}; // Fixed size block");
-                            node.Nodes.Clear();
-                        }
-                    });
+                var nullableIdx  = 0;
+                var rootNode     = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                CreateLogicFlow(rootNode,
+                    preNode: GetPackedSizePreNode,
+                    onNode: node => { GetPackedSizeOnNode(isView, node); });
 
                 AddLine("return offset;");
+            }
+        }
+
+        private void GetPackedSizeOnNode(bool isView, AeroNode node)
+        {
+            if (isView && node.IsNullable) {
+                AddLine($"if ({node.GetFullName()}.HasValue) {{");
+                Indent();
+            }
+
+            if (node is AeroFieldNode fieldNode) {
+                var typeStr = fieldNode.IsEnum ? fieldNode.EnumStr.ToLower() : fieldNode.TypeStr.ToLower();
+                if (TypeHandlers.TryGetValue(typeStr, out AeroTypeHandler handler)) {
+                    if (!node.Parent.IsRoot && node.Parent is AeroArrayNode farrayNode &&
+                        farrayNode.Mode == AeroArrayNode.Modes.Fixed) {
+                        AddLine($"offset += {handler.Size * farrayNode.Length}; // array fixed");
+                    }
+                    else {
+                        AddLine($"offset += {handler.Size}; // field size");
+                    }
+                }
+                else {
+                    AddLine($"// {fieldNode.GetFullName()} had unknown type {typeStr}");
+                }
+            }
+            else if (node is AeroStringNode stringNode) {
+                int length = 0;
+                if (stringNode.Mode == AeroStringNode.Modes.LenTypePrefixed) {
+                    length = GetTypeSize(stringNode.PrefixTypeStr);
+                }
+                else if (stringNode.Mode == AeroStringNode.Modes.NullTerminated) {
+                    length = 1;
+                }
+
+                if (stringNode.Mode == AeroStringNode.Modes.Fixed) {
+                    AddLine($"offset += {stringNode.GetSize()}; // string");
+                }
+                else {
+                    AddLine($"offset += {length} + {stringNode.GetFullName()}.Length; // string");
+                }
+            }
+            else if (node is AeroArrayNode arrayNode && arrayNode.IsFixedSize() && arrayNode.Mode != AeroArrayNode.Modes.Fixed) {
+                var prefixLen = arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed
+                    ? GetTypeSize(arrayNode.PrefixTypeStr)
+                    : 0;
+
+                AddLine(
+                    $"offset += ({prefixLen}) + ({arrayNode.GetSize()} * {arrayNode.GetFullName()}.Length); // array non fixed {node.Name}");
+                node.Nodes.Clear();
+            }
+            else if (node is AeroArrayNode arrayNode2 && arrayNode2.IsFixedSize()) {
+                AddLine(
+                    $"offset += {arrayNode2.GetSize()}; // array fixed {node.Name}");
+                node.Nodes.Clear();
+            }
+            else if (node is AeroBlockNode && node.IsFixedSize()) {
+                AddLine($"offset += {node.GetSize()}; // Fixed size block");
+                node.Nodes.Clear();
+            }
+
+            if (isView && node.IsNullable) {
+                UnIndent();
+                AddLine("}");
+            }
+        }
+
+        private void GetPackedSizePreNode(AeroNode node)
+        {
+            if (node is AeroArrayNode arrayNode && !arrayNode.IsFixedSize()) {
+                var idxName = $"idx{arrayNode.Depth}";
+                AddLine(
+                    $"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");
             }
         }
 
@@ -537,27 +614,57 @@ namespace Aero.Gen
             using (Function("public int Pack(Span<byte> buffer)")) {
                 AddLine("int offset = 0;");
                 AddLine();
+                
+                var isView = AgUtils.IsViewClass(cd, SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree));
+                if (isView) {
+                    AddLine("// Nullable bitfields fields");
+                    
+                    AddLine("UpdateNullableBitFields();");
+                    GenerateViewNullableFieldPacker(GetNumNullableFields(cd));
+                    AddLine();
+                }
 
-                CreateLogicFlow(cd,
-                    preNode: node =>
-                    {
-                        if (node is AeroArrayNode arrayNode) {
-                            CreateForFromNode(arrayNode, false, true);
-                        }
-                    },
-                    onNode: node =>
-                    {
-                        if (node is AeroFieldNode fieldNode) {
-                            AddWriter(fieldNode.GetFullName(),
-                                (fieldNode.IsEnum ? TypeAlias(fieldNode.EnumStr) : fieldNode.TypeStr).ToLower(),
-                                fieldNode.IsEnum ? TypeAlias(fieldNode.EnumStr) : null);
-                        }
-                        else if (node is AeroStringNode stringNode) {
-                            CreateStringWriter(stringNode, node);
-                        }
-                    });
+                var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                CreateLogicFlow(rootNode,
+                    CreatePackerPreNode,
+                    (node) => CreatePackerOnNode(node, node.IsNullable));
 
                 AddLine("return offset;");
+            }
+        }
+
+        private void CreatePackerPreNode(AeroNode node)
+        {
+            if (node is AeroArrayNode arrayNode) {
+                CreateForFromNode(arrayNode, false, true);
+            }
+        }
+        
+        private void CreatePackerOnNode(AeroNode node, bool noNullableCheck = false)
+        {
+            if (node.IsNullable || noNullableCheck) {
+                AddLine($"if ({node.GetFullName()}.HasValue) {{");
+                Indent();
+            }
+
+
+            if (node is AeroFieldNode fieldNode) {
+                var name = fieldNode.IsNullable ? $"{fieldNode.GetFullName()}.Value" : fieldNode.GetFullName();
+                if (node.Parent?.Parent is {IsNullable: true, IsRoot: false}) {
+                    name = $"{node.Parent.GetFullName()}.Value.{node.Name}";
+                }
+                AddWriter(name,
+                    (fieldNode.IsEnum ? TypeAlias(fieldNode.EnumStr) : fieldNode.TypeStr).ToLower(),
+                    fieldNode.IsEnum ? TypeAlias(fieldNode.EnumStr) : null);
+            }
+            else if (node is AeroStringNode stringNode) {
+                CreateStringWriter(stringNode, node);
+            }
+
+
+            if (node.IsNullable || noNullableCheck) {
+                UnIndent();
+                AddLine("}");
             }
         }
 
@@ -704,11 +811,9 @@ namespace Aero.Gen
         }
 
         // Boiler plate code for creating the logic flow
-        private void CreateLogicFlow(ClassDeclarationSyntax cd,            Action<AeroNode> preNode  = null,
+        private void CreateLogicFlow(AeroNode rootNode,            Action<AeroNode> preNode  = null,
                                      Action<AeroNode>       onNode = null, Action<AeroNode> postNode = null)
         {
-            var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
-
             var lastDepth = 0;
             var idx       = 0;
             AeroSourceGraphGen.WalkTree(rootNode, node =>

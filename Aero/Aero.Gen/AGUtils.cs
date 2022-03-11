@@ -60,20 +60,20 @@ namespace Aero.Gen
         public static string GetNamespace(ClassDeclarationSyntax cd) => cd.Ancestors().OfType<NamespaceDeclarationSyntax>().Single().Name.ToString();
 
         // Get all the fields on this class that we should serialise
-        public static IEnumerable<FieldDeclarationSyntax> GetClassFields(ClassDeclarationSyntax cd)
+        public static IEnumerable<FieldDeclarationSyntax> GetClassFields(ClassDeclarationSyntax cd, bool allowPrivate = false)
         {
             var fields = cd.Members.OfType<FieldDeclarationSyntax>()
                            .Where(x => x.DescendantTokens()
-                                        .Any(y => y.Kind() == SyntaxKind.PublicKeyword));
+                                        .Any(y => y.Kind() == SyntaxKind.PublicKeyword || y.Kind() == SyntaxKind.PrivateKeyword && allowPrivate));
 
             return fields;
         }
 
-        public static IEnumerable<FieldDeclarationSyntax> GetStructFields(StructDeclarationSyntax sd)
+        public static IEnumerable<FieldDeclarationSyntax> GetStructFields(StructDeclarationSyntax sd, bool allowPrivate = false)
         {
             var fields = sd.Members.OfType<FieldDeclarationSyntax>()
                            .Where(x => x.DescendantTokens()
-                                        .Any(y => y.Kind() == SyntaxKind.PublicKeyword));
+                                        .Any(y => y.Kind() == SyntaxKind.PublicKeyword || y.Kind() == SyntaxKind.PrivateKeyword && allowPrivate));
 
             return fields;
         }
@@ -256,6 +256,17 @@ namespace Aero.Gen
                 }
 
                 return null;
+        }
+
+        public static bool IsViewClass(ClassDeclarationSyntax cd, SemanticModel sm)
+        {
+            var aeroAttr = NodeWithName<AttributeSyntax>(cd, AeroAttribute.Name);
+
+            if (aeroAttr.ArgumentList is {Arguments: {Count: 1}} && sm.GetConstantValue(aeroAttr.ArgumentList.Arguments[0].Expression).Value is true) {
+                return true;
+            }
+
+            return false;
         }
 
         /*{

@@ -14,8 +14,9 @@ namespace Aero.Gen
         public int            Depth;
         public bool           IsRoot;
         public AeroNode       Parent;
-        public List<AeroNode> Nodes = new();
-        public int            Index = 0;
+        public List<AeroNode> Nodes      = new();
+        public int            Index      = 0;
+        public bool           IsNullable = false;
 
         // Get the full name of this node in the list, eg test.test2.int;
         public string GetFullName(bool ingoreLastArray = false)
@@ -25,6 +26,7 @@ namespace Aero.Gen
             names.Reverse();
 
             var fullName = string.Join(".", names);
+            //fullName = IsNullable ? $"{fullName}.Value" : fullName;
             return fullName;
 
             void ClimbUp(AeroNode node, bool isFirstNode)
@@ -93,11 +95,11 @@ namespace Aero.Gen
             if (Mode == Modes.Fixed && (Nodes[0] is AeroFieldNode || (Nodes[0].IsFixedSize()))) {
                 return Nodes[0].GetSize() * Math.Abs(Length);
             }
-            
+
             if (Nodes[0] is AeroFieldNode) {
                 return Nodes[0].GetSize();
             }
-            
+
             int combinedSize = 0;
             foreach (var node in Nodes) {
                 if (node.GetSize() == -1) {
@@ -175,14 +177,14 @@ namespace Aero.Gen
             public int                        Idx              = 0;
         }
 
-        public static AeroNode BuildTree(AeroSyntaxReceiver snr, ClassDeclarationSyntax cls) =>
-            BuildTree(snr, AgUtils.GetClassFields(cls));
+        public static AeroNode BuildTree(AeroSyntaxReceiver snr, ClassDeclarationSyntax cls, bool allowPrivate = false) =>
+            BuildTree(snr, AgUtils.GetClassFields(cls, AgUtils.IsViewClass(cls, snr.Context.Compilation.GetSemanticModel(cls.SyntaxTree))));
 
-        public static AeroNode BuildTree(AeroSyntaxReceiver snr, StructDeclarationSyntax sls) =>
-            BuildTree(snr, AgUtils.GetStructFields(sls));
+        public static AeroNode BuildTree(AeroSyntaxReceiver snr, StructDeclarationSyntax sls, bool allowPrivate = false) =>
+            BuildTree(snr, AgUtils.GetStructFields(sls, allowPrivate));
 
         public static AeroNode BuildTree(AeroSyntaxReceiver snr,           IEnumerable<FieldDeclarationSyntax> fields,
-                                         AeroNode           parent = null, BuildTreeState state = null)
+                                         AeroNode           parent = null, BuildTreeState                      state = null)
         {
             var rootNode = new AeroNode
             {
@@ -201,6 +203,11 @@ namespace Aero.Gen
                 var sModel    = snr.Context.Compilation.GetSemanticModel(field.SyntaxTree);
                 var typeInfo  = sModel.GetTypeInfo(field.Declaration.Type).Type;
                 var typeStr   = typeInfo?.ToString();
+
+                if (typeStr.EndsWith("?")) {
+                    currentNode.IsNullable = true;
+                    typeStr                = typeStr.TrimEnd('?');
+                }
 
                 // Ifs
                 var ifAttrs = AgUtils.GetAeroIfAttributes(field, sModel);
@@ -270,11 +277,12 @@ namespace Aero.Gen
                 if (aeroBlock != null) {
                     var aeroBlockNode = new AeroBlockNode
                     {
-                        Parent  = currentNode,
-                        Name    = fieldName,
-                        TypeStr = fieldType,
-                        Depth   = currentNode.Depth + 1,
-                        Index   = state.Idx++
+                        Parent     = currentNode,
+                        Name       = fieldName,
+                        TypeStr    = fieldType,
+                        Depth      = currentNode.Depth + 1,
+                        Index      = state.Idx++,
+                        IsNullable = currentNode.IsNullable
                     };
 
                     foreach (var structField in AgUtils.GetStructFields(aeroBlock)) {
@@ -311,7 +319,7 @@ namespace Aero.Gen
                     }
 
                     // Is a struct and not marked as an AeroBlock or a special type
-                    if (!AeroGenerator.SpecialCasesTypes.Contains(baseTypeName.ToLower())) {
+                    if (!AeroGenerator.SpecialCasesTypes.Contains(baseTypeName.ToLower()) && !currentNode.IsNullable) {
                         if ((typeInfo.TypeKind == TypeKind.Struct && typeInfo.SpecialType == SpecialType.None ||
                              (typeInfo is IArrayTypeSymbol ats && ats.ElementType.TypeKind == TypeKind.Struct &&
                               ats.ElementType.SpecialType                                  == SpecialType.None))) {
@@ -329,15 +337,16 @@ namespace Aero.Gen
                     else {
                         var fieldNode = new AeroFieldNode
                         {
-                            Name = fieldName,
-                            Parent = currentNode,
+                            Name    = fieldName,
+                            Parent  = currentNode,
                             TypeStr = typeStr.TrimEnd(new[] {'[', ']'}),
                             EnumStr =
                                 typeInfo is INamedTypeSymbol ns ? ns.EnumUnderlyingType?.Name.ToLower() ?? "" : "",
-                            IsEnum  = typeInfo?.TypeKind == TypeKind.Enum,
-                            IsFlags = typeInfo?.GetAttributes().Any(x => x.AttributeClass.Name == "Flags") == true,
-                            Depth   = currentNode.Depth + 1,
-                            Index   = state.Idx++
+                            IsEnum     = typeInfo?.TypeKind                                                   == TypeKind.Enum,
+                            IsFlags    = typeInfo?.GetAttributes().Any(x => x.AttributeClass.Name == "Flags") == true,
+                            Depth      = currentNode.Depth + 1,
+                            Index      = state.Idx++,
+                            IsNullable = currentNode.IsNullable
                         };
 
                         var nodeFullName = fieldNode.GetFullName();
@@ -386,13 +395,13 @@ namespace Aero.Gen
                 }
                 else if (node is AeroFieldNode afnode) {
                     sb.Append(
-                        $"🖊️ Field, Name: {afnode.Name}, Type: {afnode.TypeStr}, IsEnum: {afnode.IsEnum}, IsFlags: {afnode.IsFlags},");
+                        $"🖊️ Field, Name: {afnode.Name}, Type: {afnode.TypeStr}, IsEnum: {afnode.IsEnum}, IsFlags: {afnode.IsFlags}, IsNullable: {afnode.IsNullable}, ");
                 }
                 else if (node is AeroBlockNode blockNode) {
-                    sb.Append($"📦 Block, Name: {blockNode.Name}, Type: {blockNode.TypeStr}");
+                    sb.Append($"📦 Block, Name: {blockNode.Name}, Type: {blockNode.TypeStr}, IsNullable: {blockNode.IsNullable}");
                 }
                 else if (node is AeroStringNode stringNode) {
-                    sb.Append($"✍️ String, Name: {stringNode.Name}, Mode: {stringNode.Mode}");
+                    sb.Append($"✍️ String, Name: {stringNode.Name}, Mode: {stringNode.Mode}, IsNullable: {stringNode.IsNullable}");
                 }
                 else {
                     sb.Append($"Unknown, {node}");

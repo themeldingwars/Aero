@@ -33,6 +33,30 @@ namespace Aero.TestCases
         Flag4
     }
 
+    [Aero(true)]
+    public partial class ViewTypeTest
+    {
+        [AeroString]
+        public string Name;
+
+        public int Id;
+
+        public TestSubDataOne? TestBlock;
+
+        public Vector3 Position;
+        public int?    Number;
+        public int?    Number1;
+        public int?    Number2;
+        public int?    Number3;
+        public int?    Number4;
+        public int?    Number5;
+        public int?    Number6;
+        public int?    Number7;
+        public int?    Number8;
+        public int?    Number9;
+        public int?    Number10;
+    }
+
     [AeroBlock]
     public struct TestSubDataOne
     {
@@ -233,7 +257,7 @@ public class Test2
                 Console.WriteLine(log);
             }*/
 
-            var msgHander1 = AeroRouting.GetNewMessageHandler(AeroMessageIdAttribute.MsgType.Matrix, AeroMessageIdAttribute.MsgSrc.Command, 2);
+            //var msgHander1 = AeroRouting.GetNewMessageHandler(AeroMessageIdAttribute.MsgType.Matrix, AeroMessageIdAttribute.MsgSrc.Command, 2);
 
         }
         
