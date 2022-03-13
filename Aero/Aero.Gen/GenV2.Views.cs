@@ -8,7 +8,7 @@ namespace Aero.Gen
     public partial class Genv2
     {
         const string NULLABLE_FIELD_BASE_NAME = "NullablesBitfield";
-        const string DIRTY_FIELD_BASE_NAME = "DirtyBitfield";
+        const string DIRTY_FIELD_BASE_NAME    = "DirtyBitfield";
 
         private void GenerateViewClassMembers(ClassDeclarationSyntax cd, SemanticModel sm)
         {
@@ -23,8 +23,13 @@ namespace Aero.Gen
             {
                 // Just the top level ones
                 if (node.Depth == 0) {
-                    var typeStr = node.IsNullable ? $"{node.TypeStr}?" : node.TypeStr;
-                    CreateViewProperty(node.Name, typeStr, fieldIdx);
+                    if (node.IsNullable) {
+                        CreateViewPropertyForNullable(node.Name, node.TypeStr, fieldIdx, numNullableFields);
+                    }
+                    else {
+                        CreateViewProperty(node.Name, node.TypeStr, fieldIdx);
+                    }
+
                     fieldIdx++;
 
                     if (node.IsNullable) {
@@ -36,7 +41,7 @@ namespace Aero.Gen
             AddLine();
             AddLine($"// Num Nullable Fields: {numNullableFields}");
             GenerateViewNullableFields(numNullableFields);
-            
+
             AddLine();
             AddLine("// Bit fields trackers for changes made since last send");
             AddLine($"// Num fields: {fieldIdx}");
@@ -47,24 +52,26 @@ namespace Aero.Gen
         {
             GenerateViewUpdateUnpacker(cd, sm);
             GenerateViewUpdatePacker(cd, sm);
-            GenerateViewNullableFieldsSetter(cd);
+            //GenerateViewNullableFieldsSetter(cd);
             GenerateClearViewChanges(cd);
             GenerateGetPackedChangesSize(cd, sm);
         }
 
         private void GenerateViewNullableFields(int numNullableFields) =>
             ViewNullableFieldsFor(numNullableFields, (i) => AddLine($"private byte {NULLABLE_FIELD_BASE_NAME}_{i};"));
+
         private void GenerateViewNullableFieldPacker(int numNullableFields) =>
             ViewNullableFieldsFor(numNullableFields, (i) => AddLine($"buffer[offset++] = {NULLABLE_FIELD_BASE_NAME}_{i};"));
+
         private void GenerateViewNullableFieldUnpacker(int numNullableFields) =>
             ViewNullableFieldsFor(numNullableFields, (i) => AddLine($"{NULLABLE_FIELD_BASE_NAME}_{i} = data[offset++];"));
 
         private void GenerateViewDirtyFieldTrackers(int numFields) =>
             ViewNullableFieldsFor(numFields, (i) => AddLine($"private byte {DIRTY_FIELD_BASE_NAME}_{i};"));
-        
+
         private void ViewNullableFieldsFor(int numNullableFields, Action<int> func)
         {
-            var numBytes = Math.Ceiling((double)(numNullableFields) / 8);
+            var numBytes = Math.Ceiling((double) (numNullableFields) / 8);
 
             for (int i = 0; i < numBytes; i++) {
                 func(i + 1);
@@ -84,10 +91,10 @@ namespace Aero.Gen
 
             return numNullableFields;
         }
-        
+
         private int GetNumFields(ClassDeclarationSyntax cd)
         {
-            var rootNode          = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+            var rootNode  = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
             var numFields = 0;
             AeroSourceGraphGen.WalkTree(rootNode, node =>
             {
@@ -101,7 +108,7 @@ namespace Aero.Gen
 
         private string GenerateViewFieldIdx(int idx, string baseName = NULLABLE_FIELD_BASE_NAME)
         {
-            var byteIdx = Math.Floor((double)idx /  8) + 1;
+            var byteIdx = Math.Floor((double) idx / 8) + 1;
             var bitIdx  = idx % 8;
             var str     = $"({baseName}_{byteIdx} & (1 << {bitIdx})) != 0";
 
@@ -119,16 +126,17 @@ namespace Aero.Gen
                 AeroSourceGraphGen.WalkTree(rootNode, node =>
                 {
                     if (node.Depth == 0 && node.IsNullable) {
-                        var byteIdx = Math.Floor((double)numNullableFields /  8) + 1;
+                        var byteIdx = Math.Floor((double) numNullableFields / 8) + 1;
                         var bitIdx  = numNullableFields % 8;
-                        
+
                         using (If($"{node.GetFullName()}.HasValue")) {
                             AddLine($"{NULLABLE_FIELD_BASE_NAME}_{byteIdx} |= (byte)(1 << {bitIdx});");
                         }
+
                         using (Else()) {
                             AddLine($"{NULLABLE_FIELD_BASE_NAME}_{byteIdx} = (byte)({NULLABLE_FIELD_BASE_NAME}_{byteIdx} & ~(1 << {bitIdx}));");
                         }
-                        
+
                         numNullableFields++;
                     }
                 });
@@ -168,12 +176,12 @@ namespace Aero.Gen
                                 shadowFieldIdx++;
                             }
                         });
-                        
+
                         AddLine();
                         AddLine($"// Set the nullables to null if their id + 128 is set");
                         foreach (var fieldKvp in nullableFieldsForNullSetting) {
                             using (Block($"case {fieldKvp.Key + 128}: // {fieldKvp.Value.GetFullName()}")) {
-                                AddLine($"{fieldKvp.Value.GetFullName()} = null;");
+                                AddLine($"{fieldKvp.Value.GetFullName()}Prop = null;");
                                 AddLine("break;");
                             }
                         }
@@ -191,7 +199,7 @@ namespace Aero.Gen
             using (Function("public int PackChanges(Span<byte> buffer, bool clearDirtyAfterSend = true)")) {
                 AddLine("int offset = 0;");
                 AddLine();
-                var rootNode          = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
                 var fieldIdx = 0;
                 AeroSourceGraphGen.WalkTree(rootNode, node =>
                 {
@@ -199,9 +207,10 @@ namespace Aero.Gen
                         AddLine($"// {node.GetFullName()}, shadowFieldIdx: {fieldIdx}, isNullable: {node.IsNullable}");
                         using (If($"{GenerateViewFieldIdx(fieldIdx, DIRTY_FIELD_BASE_NAME)}")) {
                             if (node.IsNullable) {
-                                using (If($"{node.GetFullName()}.HasValue")) {
+                                using (If($"{node.GetFullName()}Prop.HasValue")) { // TODO: change to use nullable bits
                                     CreatePacker(fieldIdx, node, true);
                                 }
+
                                 using (Else()) {
                                     AddLine($"buffer[offset++] = {fieldIdx + 128}; // was null so set the clear, I think this is right");
                                 }
@@ -210,7 +219,7 @@ namespace Aero.Gen
                                 CreatePacker(fieldIdx, node, false);
                             }
                         }
-                        
+
                         fieldIdx++;
                     }
                 });
@@ -239,19 +248,19 @@ namespace Aero.Gen
                     if (node.Depth == 0) {
                         AddLine($"");
                         using (If($"{GenerateViewFieldIdx(fieldIdx, DIRTY_FIELD_BASE_NAME)}")) {
-                            
                             AddLine("offset++;");
                             CreateLogicFlow(node,
                                 preNode: GetPackedSizePreNode,
                                 onNode: node => { GetPackedSizeOnNode(true, node); });
                         }
+
                         fieldIdx++;
                     }
                 });
                 AddLine($"return offset;");
             }
         }
-        
+
 
         private void GenerateClearViewChanges(ClassDeclarationSyntax cd)
         {
@@ -259,7 +268,7 @@ namespace Aero.Gen
             AddLine("[MethodImpl(MethodImplOptions.AggressiveInlining)]");
             using (Function("public void ClearViewChanges()")) {
                 var numFields = GetNumFields(cd);
-                var numBytes  = (int)Math.Ceiling((double) numFields / 8);
+                var numBytes  = (int) Math.Ceiling((double) numFields / 8);
                 for (int i = 0; i < numBytes; i++) {
                     AddLine($"{DIRTY_FIELD_BASE_NAME}_{i + 1} = 0;");
                 }
@@ -268,10 +277,10 @@ namespace Aero.Gen
 
         private void CreateViewProperty(string fieldName, string typeStr, int fieldIdx)
         {
-            var byteIdx = Math.Floor((double)fieldIdx /  8) + 1;
+            var byteIdx = Math.Floor((double) fieldIdx / 8) + 1;
             var bitIdx  = fieldIdx % 8;
-            
-            AddLines($"public {typeStr} {fieldName}Prop",
+
+            AddLines($"public {typeStr} {fieldName}Prop // ShadowFieldIdx: {fieldIdx}",
                 "{",
                 "  [MethodImpl(MethodImplOptions.AggressiveInlining)]",
                 $"  get => {fieldName};",
@@ -281,6 +290,35 @@ namespace Aero.Gen
                 "   {",
                 $"       {fieldName} = value;",
                 $"       {DIRTY_FIELD_BASE_NAME}_{byteIdx} |= (byte)(1 << {bitIdx});",
+                "   }",
+                "}");
+        }
+
+        private void CreateViewPropertyForNullable(string fieldName, string typeStr, int fieldIdx, int nullIdx)
+        {
+            var fieldByteIdx    = Math.Floor((double) fieldIdx / 8) + 1;
+            var nullableByteIdx = Math.Floor((double) nullIdx  / 8) + 1;
+            var fieldBitIdx     = fieldIdx % 8;
+            var nuullableBitIdx = nullIdx  % 8;
+
+            AddLines($"public {typeStr}? {fieldName}Prop // ShadowFieldIdx: {fieldIdx}, NullableIdx: {nullIdx}",
+                "{",
+                "   [MethodImpl(MethodImplOptions.AggressiveInlining)]",
+                $"   get => ({NULLABLE_FIELD_BASE_NAME}_{nullableByteIdx} & (1 << {nuullableBitIdx})) != 0 ? (int?){fieldName} : null;",
+                "",
+                "   [MethodImpl(MethodImplOptions.AggressiveInlining)]",
+                "   set",
+                "   {",
+                "       if (value != null) {",
+                $"           {NULLABLE_FIELD_BASE_NAME}_{nullableByteIdx} |= (byte)(1 << {nuullableBitIdx});",
+                $"           {fieldName} = ({typeStr})value;",
+                "       }",
+                "       else {",
+                $"           {NULLABLE_FIELD_BASE_NAME}_{nullableByteIdx} = (byte)({NULLABLE_FIELD_BASE_NAME}_{nullableByteIdx} & ~(1 << {nuullableBitIdx}));",
+                $"           {fieldName} = default;",
+                "       }",
+                "",
+                $"       {DIRTY_FIELD_BASE_NAME}_{fieldByteIdx} |= (byte)(1 << {fieldBitIdx});",
                 "   }",
                 "}");
         }

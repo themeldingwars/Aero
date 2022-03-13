@@ -540,7 +540,7 @@ namespace Aero.Gen
         private void GetPackedSizeOnNode(bool isView, AeroNode node)
         {
             if (isView && node.IsNullable) {
-                AddLine($"if ({node.GetFullName()}.HasValue) {{");
+                AddLine($"if ({node.GetFullName()}Prop.HasValue) {{"); // TODO: replace with bit field check instead
                 Indent();
             }
 
@@ -619,7 +619,7 @@ namespace Aero.Gen
                 if (isView) {
                     AddLine("// Nullable bitfields fields");
                     
-                    AddLine("UpdateNullableBitFields();");
+                    //AddLine("UpdateNullableBitFields();");
                     GenerateViewNullableFieldPacker(GetNumNullableFields(cd));
                     AddLine();
                 }
@@ -643,15 +643,15 @@ namespace Aero.Gen
         private void CreatePackerOnNode(AeroNode node, bool noNullableCheck = false)
         {
             if (node.IsNullable || noNullableCheck) {
-                AddLine($"if ({node.GetFullName()}.HasValue) {{");
+                AddLine($"if ({node.GetFullName()}Prop.HasValue) {{"); // TODO: use bitfield
                 Indent();
             }
 
 
             if (node is AeroFieldNode fieldNode) {
-                var name = fieldNode.IsNullable ? $"{fieldNode.GetFullName()}.Value" : fieldNode.GetFullName();
+                var name = fieldNode.IsNullable ? $"{fieldNode.GetFullName()}" : fieldNode.GetFullName();
                 if (node.Parent?.Parent is {IsNullable: true, IsRoot: false}) {
-                    name = $"{node.Parent.GetFullName()}.Value.{node.Name}";
+                    name = $"{node.Parent.GetFullName()}.{node.Name}";
                 }
                 AddWriter(name,
                     (fieldNode.IsEnum ? TypeAlias(fieldNode.EnumStr) : fieldNode.TypeStr).ToLower(),

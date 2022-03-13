@@ -2,6 +2,7 @@
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using Aero.Gen;
@@ -19,7 +20,7 @@ namespace Aero.TestCases
         Flag3,
         Flag4
     }
-    
+
 
     [AeroBlock]
     public struct TestSubDataOne
@@ -29,78 +30,65 @@ namespace Aero.TestCases
         public int  IntTest;
         public uint UintTest;
     }
-    
+
     [AeroBlock]
     public struct TestSubDataTwo
     {
         public byte           Byte;
         public TestSubDataOne SubData;
     }
-    
+
     [Aero]
     public partial class TestCase1Main
     {
-        public byte   Byte;
-        public char   Char;
-        public int    IntTest;
-        public uint   UintTest;
-        public short  ShortTest;
-        public ushort UshortTest;
-        public long   Long;
-        public ulong  ULong;
-        public float  Float;
-        [AeroIf("IntTest", -100)]
-        public double Double;
-        [AeroIf("Byte", 0)]
-        public double Double2;
+        public                           byte   Byte;
+        public                           char   Char;
+        public                           int    IntTest;
+        public                           uint   UintTest;
+        public                           short  ShortTest;
+        public                           ushort UshortTest;
+        public                           long   Long;
+        public                           ulong  ULong;
+        public                           float  Float;
+        [AeroIf("IntTest", -100)] public double Double;
+        [AeroIf("Byte", 0)]       public double Double2;
 
         public Vector2 Vec2;
-        
+
         public TestFlags Bytea;
-        
+
         //public byte Byte;
-        
-        [AeroIf("Byte", 0)]
-        [AeroIf("Byte", 1)]
-        [AeroArray(typeof(int))]
+
+        [AeroIf("Byte", 0)] [AeroIf("Byte", 1)] [AeroArray(typeof(int))]
         public int[] TestArr;
 
-        [AeroIf("Bytea", Ops.HasFlag, TestFlags.Flag2, TestFlags.Flag3)]
-        [AeroArray(2)]
+        [AeroIf("Bytea", Ops.HasFlag, TestFlags.Flag2, TestFlags.Flag3)] [AeroArray(2)]
         public int[] TestArr2;
-        
-        [AeroArray(nameof(Byte))]
-        public int[] TestArr3;
-        
-        [AeroArray(2)]
-        public TestSubDataOne[] TestArr4;
+
+        [AeroArray(nameof(Byte))] public int[] TestArr3;
+
+        [AeroArray(2)] public TestSubDataOne[] TestArr4;
 
         //[AeroIf("Byte", AeroIfAttribute.Ops.Equal, 0.5f, 1.0f)]
         public TestSubDataOne TestSubData;
         public TestSubDataTwo TestSubData2;
-        
-        [AeroString(20)]
-        public string TestString;
-        
-        [AeroString(nameof(Byte))]
-        public string TestString2;
-        
-        [AeroString(typeof(int))]
-        public string TestString3;
-        
-        [AeroString]
-        public string TestString4;
-        
+
+        [AeroString(20)] public string TestString;
+
+        [AeroString(nameof(Byte))] public string TestString2;
+
+        [AeroString(typeof(int))] public string TestString3;
+
+        [AeroString] public string TestString4;
+
         public TestSubDataTwo TestSubData3;
 
         public byte Byte2;
-        
-        [AeroIf(nameof(Byte), 1)]
-        public TestSubDataOne TestSubData4;
-        
+
+        [AeroIf(nameof(Byte), 1)] public TestSubDataOne TestSubData4;
+
         public TestCase1Main()
         {
-            
         }
 
         public void TestRead(ReadOnlySpan<byte> data)
@@ -115,15 +103,13 @@ namespace Aero.TestCases
 
             TestFlags flagsTest = TestFlags.Flag2;
             if ((flagsTest & TestFlags.Flag2) == 0) {
-                
             }
 
             if ((flagsTest & TestFlags.Flag2) != 0) {
-
             }
 
             //TestString = Encoding.UTF8.GetString(data);
-            
+
             data.Slice(offset, data.Length - offset).IndexOf<byte>(0x00);
 
             var buffer = new Span<byte>();
@@ -135,112 +121,101 @@ namespace Aero.TestCases
             //strBytes.CopyTo(data.Slice(0, strBytes.Length));
         }
     }
-    
+
     [Aero]
     [AeroMessageId(MsgType.Control, MsgSrc.Both, 1)]
     public partial class ControlMsgBothTest1
     {
-        
     }
-    
+
     [Aero]
     [AeroMessageId(MsgType.Matrix, MsgSrc.Both, 1)]
     public partial class MatrixBothTest1
     {
-        
     }
-    
+
     [Aero]
     [AeroMessageId(MsgType.Matrix, MsgSrc.Command, 2)]
     public partial class MatrixMsgCmdTest2
     {
-        
     }
-    
+
     [Aero]
     [AeroMessageId(MsgType.Matrix, MsgSrc.Message, 3)]
     public partial class MatrixMsgTest3
     {
-        
     }
-    
+
     [Aero]
     [AeroMessageId(MsgType.GSS, MsgSrc.Both, 1, 1)]
     public partial class GssBothTest1
     {
-        
     }
-    
+
     [Aero]
     [AeroMessageId(MsgType.GSS, MsgSrc.Command, 1, 2)]
     public partial class GssMsgCmdTest2
     {
-        
     }
-    
+
     [Aero]
     [AeroMessageId(MsgType.GSS, MsgSrc.Message, 1, 3)]
     public partial class GssMsgTest3
     {
-        
     }
-    
+
     [Aero]
     [AeroMessageId(MsgType.GSS, MsgSrc.Both, 2, 1)]
     public partial class GssBothTest4
     {
-        
     }
-    
+
     [Aero]
     [AeroMessageId(MsgType.GSS, MsgSrc.Command, 2, 2)]
     public partial class GssMsgCmdTest5
     {
-        
     }
-    
+
     [Aero]
     [AeroMessageId(MsgType.GSS, MsgSrc.Message, 2, 3)]
     [AeroMessageId(MsgType.GSS, MsgSrc.Message, 3, 3)]
     public partial class GssMsgTest6
     {
-        
     }
 
     [Aero(true)]
     public partial class ViewTypeTest
     {
-        [AeroString]
-        private string Name;
+        [AeroString] private string Name;
 
         private int Id;
 
-        private TestSubDataOne? TestBlock;
+        //private TestSubDataOne TestBlock;
 
         //public Vector3 Position;
-        public int?    Number;
-        public int?    Number1;
-        public int?    Number2;
-        public int?    Number3;
-        public int?    Number4;
-        public int?    Number5;
-        public int?    Number6;
-        public int?    Number7;
-        public int?    Number8;
-        public int?    Number9;
-        public int?    Number10;
-        public int?    Number11;
-        public int?    Number12;
-        public int?    Number13;
-        public int?    Number14;
-        public int?    Number15;
-        public int?    Number16;
-        public int?    Number17;
-        public int?    Number18;
-        public int?    Number19;
-        public int?    Number20;
-        public int?    Number21;
-        public int?    Number22;
+        [AeroNullable] public int Number;
+        [AeroNullable] public int Number1;
+        [AeroNullable] public int Number2;
+        [AeroNullable] public int Number3;
+        [AeroNullable] public int Number4;
+        [AeroNullable] public int Number5;
+        [AeroNullable] public int Number6;
+        [AeroNullable] public int Number7;
+        [AeroNullable] public int Number8;
+        [AeroNullable] public int Number9;
+        [AeroNullable] public int Number10;
+        [AeroNullable] public int Number11;
+        [AeroNullable] public int Number12;
+        [AeroNullable] public int Number13;
+        [AeroNullable] public int Number14;
+        [AeroNullable] public int Number15;
+        [AeroNullable] public int Number16;
+        [AeroNullable] public int Number17;
+        [AeroNullable] public int Number18;
+        [AeroNullable] public int Number19;
+        [AeroNullable] public int Number20;
+        [AeroNullable] public int Number21;
+        [AeroNullable] public int Number22;
         //public int?    Number23;
         //public int?    Number24;
         //public int?    Number25;
@@ -418,5 +393,5 @@ namespace Aero.TestCases
         public int?    Number197;
         public int?    Number198;
         public int?    Number199;*/
-    }                        
+    }
 }

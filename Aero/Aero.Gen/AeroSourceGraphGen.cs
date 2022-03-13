@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Aero.Gen.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -204,7 +205,7 @@ namespace Aero.Gen
                 var typeInfo  = sModel.GetTypeInfo(field.Declaration.Type).Type;
                 var typeStr   = typeInfo?.ToString();
 
-                if (typeStr.EndsWith("?")) {
+                if (typeStr.EndsWith("?") || AgUtils.HasNodeWithName<AttributeSyntax>(field, AeroNullable.Name)) {
                     currentNode.IsNullable = true;
                     typeStr                = typeStr.TrimEnd('?');
                 }

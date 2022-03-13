@@ -1,15 +1,19 @@
 ﻿using System.Numerics;
+using Aero.Gen;
 using Aero.Gen.Attributes;
 
 namespace Aero.TestCases
 {
-    [AeroBlock]
-    public struct Melding_ObserverView_ShadowFieldUpdate
+    [Aero(true)]
+    public partial class Melding_ObserverView_ShadowFieldUpdate
     {
         [AeroString]
-        public string? PerimiterSetName;
-        public ActiveDataStruct? ActiveData;
-        public ScopeBubbleInfoData? ScopeBubbleInfo;
+        public string PerimiterSetName;
+        
+        [AeroNullable]
+        private ActiveDataStruct ActiveData;
+        
+       // public ScopeBubbleInfoData            ScopeBubbleInfo;
     }
     
     [AeroBlock]
