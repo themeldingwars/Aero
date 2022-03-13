@@ -643,8 +643,8 @@ namespace Aero.Gen
         private void CreatePackerOnNode(AeroNode node, bool noNullableCheck = false)
         {
             if (node.IsNullable || noNullableCheck) {
-                AddLine($"if ({node.GetFullName()}Prop.HasValue) {{"); // TODO: use bitfield
-                Indent();
+                //AddLine($"if ({node.GetFullName()}Prop.HasValue) {{"); // TODO: use bitfield
+                //Indent();
             }
 
 
@@ -663,8 +663,8 @@ namespace Aero.Gen
 
 
             if (node.IsNullable || noNullableCheck) {
-                UnIndent();
-                AddLine("}");
+                //UnIndent();
+                //AddLine("}");
             }
         }
 

@@ -230,7 +230,7 @@ namespace Aero.Gen
             {
                 AddLine($"buffer[offset++] = {fieldIdx};");
                 CreateLogicFlow(node,
-                    CreatePackerPreNode,
+                    (node) => CreatePackerPreNode(node),
                     (node) => CreatePackerOnNode(node, noNullableCheck));
             }
         }
@@ -304,7 +304,7 @@ namespace Aero.Gen
             AddLines($"public {typeStr}? {fieldName}Prop // ShadowFieldIdx: {fieldIdx}, NullableIdx: {nullIdx}",
                 "{",
                 "   [MethodImpl(MethodImplOptions.AggressiveInlining)]",
-                $"   get => ({NULLABLE_FIELD_BASE_NAME}_{nullableByteIdx} & (1 << {nuullableBitIdx})) != 0 ? (int?){fieldName} : null;",
+                $"   get => ({NULLABLE_FIELD_BASE_NAME}_{nullableByteIdx} & (1 << {nuullableBitIdx})) != 0 ? ({typeStr}?){fieldName} : null;",
                 "",
                 "   [MethodImpl(MethodImplOptions.AggressiveInlining)]",
                 "   set",
