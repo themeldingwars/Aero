@@ -218,7 +218,7 @@ namespace Aero.Gen
                         Statement = string.Join(" && ", ifAttrs.Select(x =>
                         {
                             if (state.CastedNameToType.TryGetValue($"{currentNode.GetFullName()}.{x.Key}",
-                                out string typeName)) {
+                                    out string typeName)) {
                                 x.Values = x.Values.Select(y =>
                                 {
                                     var splitVals = y.Split('.');
@@ -260,7 +260,8 @@ namespace Aero.Gen
                         PrefixTypeStr = arrayAttrData.KeyType,
                         Parent        = currentNode,
                         Depth         = currentNode.Depth + 1,
-                        Index         = state.Idx++
+                        Index         = state.Idx++,
+                        TypeStr       = typeStr
                     };
 
                     currentNode.Nodes.Add(arrayNode);

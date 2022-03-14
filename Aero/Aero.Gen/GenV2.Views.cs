@@ -24,10 +24,10 @@ namespace Aero.Gen
                 // Just the top level ones
                 if (node.Depth == 0) {
                     if (node.IsNullable) {
-                        CreateViewPropertyForNullable(node.Name, node.TypeStr, fieldIdx, numNullableFields);
+                        CreateViewPropertyForNullable(node.GetFullName(), node.TypeStr, fieldIdx, numNullableFields);
                     }
                     else {
-                        CreateViewProperty(node.Name, node.TypeStr, fieldIdx);
+                        CreateViewProperty(node.GetFullName(), node.TypeStr, fieldIdx);
                     }
 
                     fieldIdx++;
@@ -231,7 +231,7 @@ namespace Aero.Gen
                 AddLine($"buffer[offset++] = {fieldIdx};");
                 CreateLogicFlow(node,
                     (node) => CreatePackerPreNode(node),
-                    (node) => CreatePackerOnNode(node, noNullableCheck));
+                    (node) => CreatePackerOnNode(node, false));
             }
         }
 
