@@ -191,6 +191,34 @@ public partial class Example3
 }
 ```
 
+# Views
+To mark a class as a view add the attribute ``[Aero(true)]`` to it, the true marks it as a view and will genrate the extra data.
+
+Fields in the class will get a ``ShadowField`` idx based on the order that they are defined in.
+Nullables can be marked as such with the ``[AeroNullable]``
+
+Example:
+```csharp
+[Aero(true)]
+public partial class SimpleViewWithNullable
+{
+    public int   TestValue;
+    public float TestVlaue2;
+    
+    [AeroNullable] public int TestValueNullable;
+}
+```
+
+The added functions are:
+* ``GetPackedSize()``
+* ``UnpackChanges(ReadOnlySpan<byte> data)``
+* ``PackChanges(Span<byte> buffer, bool clearDirtyAfterSend = true)``
+
+For each field in a view call a property will be genrated, for non nullables the set on this will mark that value as dirty so a ``PackChanges`` call will only pack what has changed.
+This is why feilds should be defined as private to ensure only the propetys can be called and those changes can be tracked.
+These views shouldn't be shared or polled for this reason.
+
+
 # Config
 The following settings can be used in a .editorconfig file to adjust the generators output (or it should).
 * ``Aero_Enabled``: Enable or disable the generator
