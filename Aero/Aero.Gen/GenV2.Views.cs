@@ -223,6 +223,11 @@ namespace Aero.Gen
                         fieldIdx++;
                     }
                 });
+                
+                AddLines("if (clearDirtyAfterSend) { ",
+                    "   ClearViewChanges();",
+                    "}");
+                
                 AddLine($"return offset;");
             }
 

@@ -292,12 +292,12 @@ namespace Aero.Gen
 
     #region Code adding functions
 
-        protected static int TabSpaces = 4;
-        public void Indent() => IndentLevel += TabSpaces;
-        public void UnIndent() => IndentLevel -= TabSpaces;
-        public void AddLine(string line) => Sb.AppendLine($"{new string(' ', Math.Max(IndentLevel, 0))}{line}");
-        public void AddLine() => AddLine("");
-        public void AddLines(params string[] lines) => Array.ForEach(lines, AddLine);
+        protected static int  TabSpaces = 4;
+        public           void Indent()                        => IndentLevel += TabSpaces;
+        public           void UnIndent()                      => IndentLevel -= TabSpaces;
+        public           void AddLine(string line)            => Sb.AppendLine($"{new string(' ', Math.Max(IndentLevel, 0))}{line}");
+        public           void AddLine()                       => AddLine("");
+        public           void AddLines(params string[] lines) => Array.ForEach(lines, AddLine);
 
     #endregion
 
@@ -317,10 +317,10 @@ namespace Aero.Gen
 
         public AgBlock If(string ifStr) => new(this,
             () => AddLine($"if ({ifStr}) {{"), noOpenBracket: true);
-        
+
         public AgBlock ElseIf(string ifStr) => new(this,
             () => AddLine($"else if ({ifStr}) {{"), noOpenBracket: true);
-        
+
         public AgBlock Else() => new(this,
             () => AddLine($"else {{"), noOpenBracket: true);
 
@@ -335,13 +335,13 @@ namespace Aero.Gen
 
                 return false;
             });
-        
+
         public AgBlock Switch(string value) => new(this,
             () => AddLine($"switch ({value})"), () =>
             {
                 UnIndent();
                 AddLine("}");
-                
+
                 return false;
             });
 
@@ -362,9 +362,10 @@ namespace Aero.Gen
 
         public (string fileName, string source) GenClass(ClassDeclarationSyntax cd)
         {
-            var fileName = $"{AgUtils.GetClassName(cd)}.Aero.cs";
-            var ns       = AgUtils.GetNamespace(cd);
-            var sm       = SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree);
+            var fileName    = $"{AgUtils.GetClassName(cd)}.Aero.cs";
+            var ns          = AgUtils.GetNamespace(cd);
+            var sm          = SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree);
+            var isViewClass = AgUtils.IsViewClass(cd, sm);
 
             AddLines(
                 $"// Aero Generated file, not a not a good idea to edit :>",
@@ -372,10 +373,8 @@ namespace Aero.Gen
             AddUsings();
             AddLine();
             using (Namespace(ns)) {
-                using (Class(AgUtils.GetClassName(cd), " : Aero.Gen.IAero")) {
+                using (Class(AgUtils.GetClassName(cd), isViewClass ? " : Aero.Gen.IAeroViewInterface" : " : Aero.Gen.IAero")) {
                     if (Config.DiagLogging) AddDiagBoilerplate();
-                    
-                    var isViewClass = AgUtils.IsViewClass(cd, sm);
 
                 #if DEBUG
                     AddLine("/*");
@@ -388,6 +387,7 @@ namespace Aero.Gen
                     if (isViewClass) {
                         GenerateViewClassMembers(cd, sm);
                     }
+
                     AddLine();
 
                     CreateReaderV2(cd);
@@ -476,6 +476,7 @@ namespace Aero.Gen
                 if (node.Parent?.Parent is {IsNullable: true, IsRoot: false}) {
                     name = $"{node.Parent.GetFullName()}.Value.{node.Name}";
                 }
+
                 AddReader(name,
                     (fieldNode.IsEnum ? fieldNode.EnumStr : fieldNode.TypeStr).ToLower(),
                     fieldNode.IsEnum ? fieldNode.TypeStr : null);
@@ -517,11 +518,11 @@ namespace Aero.Gen
             using (Function("public int GetPackedSize()")) {
                 AddLine("int offset = 0;");
                 AddLine();
-                
+
                 var isView = AgUtils.IsViewClass(cd, SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree));
                 if (isView) {
                     AddLine("// Nullable bitfields fields");
-                    var numNullableBitFields = Math.Ceiling((double)GetNumNullableFields(cd) / 8);
+                    var numNullableBitFields = Math.Ceiling((double) GetNumNullableFields(cd) / 8);
                     AddLine($"offset += {numNullableBitFields};");
                     AddLine();
                 }
@@ -614,11 +615,11 @@ namespace Aero.Gen
             using (Function("public int Pack(Span<byte> buffer)")) {
                 AddLine("int offset = 0;");
                 AddLine();
-                
+
                 var isView = AgUtils.IsViewClass(cd, SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree));
                 if (isView) {
                     AddLine("// Nullable bitfields fields");
-                    
+
                     //AddLine("UpdateNullableBitFields();");
                     GenerateViewNullableFieldPacker(GetNumNullableFields(cd));
                     AddLine();
@@ -639,7 +640,7 @@ namespace Aero.Gen
                 CreateForFromNode(arrayNode, false, true);
             }
         }
-        
+
         private void CreatePackerOnNode(AeroNode node, bool noNullableCheck = false)
         {
             if (node.IsNullable && noNullableCheck) {
@@ -653,6 +654,7 @@ namespace Aero.Gen
                 if (node.Parent?.Parent is {IsNullable: true, IsRoot: false}) {
                     name = $"{node.Parent.GetFullName()}.{node.Name}";
                 }
+
                 AddWriter(name,
                     (fieldNode.IsEnum ? TypeAlias(fieldNode.EnumStr) : fieldNode.TypeStr).ToLower(),
                     fieldNode.IsEnum ? TypeAlias(fieldNode.EnumStr) : null);
@@ -676,7 +678,7 @@ namespace Aero.Gen
             switch (stringNode.Mode) {
                 case AeroStringNode.Modes.Ref:
                     var refFullName = $"{stringNode.Parent.GetFullName()}.{stringNode.RefFieldName}".TrimStart('.');
-                    
+
                     AddLines($"{node.GetFullName()} = {readStringCall}(data.Slice(offset, {refFullName}));",
                         $"offset += {refFullName};");
                     break;
@@ -752,7 +754,7 @@ namespace Aero.Gen
             switch (arrayNode.Mode) {
                 case AeroArrayNode.Modes.Ref:
                     var refFullName = $"{arrayNode.Parent.GetFullName()}.{arrayNode.RefFieldName}".TrimStart('.');
-                    
+
                     if (createArray) {
                         AddLine(
                             $"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{refFullName}];");
@@ -811,8 +813,8 @@ namespace Aero.Gen
         }
 
         // Boiler plate code for creating the logic flow
-        private void CreateLogicFlow(AeroNode rootNode,            Action<AeroNode> preNode  = null,
-                                     Action<AeroNode>       onNode = null, Action<AeroNode> postNode = null)
+        private void CreateLogicFlow(AeroNode         rootNode,      Action<AeroNode> preNode  = null,
+                                     Action<AeroNode> onNode = null, Action<AeroNode> postNode = null)
         {
             var lastDepth = 0;
             var idx       = 0;
