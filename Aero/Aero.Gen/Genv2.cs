@@ -362,8 +362,9 @@ namespace Aero.Gen
 
         public (string fileName, string source) GenClass(ClassDeclarationSyntax cd)
         {
-            var fileName    = $"{AgUtils.GetClassName(cd)}.Aero.cs";
             var ns          = AgUtils.GetNamespace(cd);
+            var cn          = AgUtils.GetClassName(cd);
+            var fileName    = $"{ns}.{cn}.Aero.cs";
             var sm          = SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree);
             var isViewClass = AgUtils.IsViewClass(cd, sm);
 
@@ -373,7 +374,7 @@ namespace Aero.Gen
             AddUsings();
             AddLine();
             using (Namespace(ns)) {
-                using (Class(AgUtils.GetClassName(cd), isViewClass ? " : Aero.Gen.IAeroViewInterface" : " : Aero.Gen.IAero")) {
+                using (Class(cn, isViewClass ? " : Aero.Gen.IAeroViewInterface" : " : Aero.Gen.IAero")) {
                     if (Config.DiagLogging) AddDiagBoilerplate();
 
                 #if DEBUG
