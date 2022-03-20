@@ -55,6 +55,10 @@ namespace Aero.Gen
             //GenerateViewNullableFieldsSetter(cd);
             GenerateClearViewChanges(cd);
             GenerateGetPackedChangesSize(cd, sm);
+
+            GenerateShadowFieldIdToName(cd, sm);
+            GenerateShadowFieldIdToType(cd, sm);
+            GenerateGetShadowFieldsData(cd, sm);
         }
 
         private void GenerateViewNullableFields(int numNullableFields) =>
@@ -223,11 +227,11 @@ namespace Aero.Gen
                         fieldIdx++;
                     }
                 });
-                
+
                 AddLines("if (clearDirtyAfterSend) { ",
                     "   ClearViewChanges();",
                     "}");
-                
+
                 AddLine($"return offset;");
             }
 
@@ -326,6 +330,81 @@ namespace Aero.Gen
                 $"       {DIRTY_FIELD_BASE_NAME}_{fieldByteIdx} |= (byte)(1 << {fieldBitIdx});",
                 "   }",
                 "}");
+        }
+
+        private void GenerateShadowFieldIdToName(ClassDeclarationSyntax cd, SemanticModel sm)
+        {
+            AddLine("// Returns the name for the shadow field id");
+            using (Function("public string ShadowFieldIdToName(int id)")) {
+                AddLine("var str = id switch");
+                AddLine("{");
+                Indent();
+                {
+                    var id       = 0;
+                    var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                    AeroSourceGraphGen.WalkTree(rootNode, node =>
+                    {
+                        // Just the top level ones
+                        if (node.Depth == 0 && (node.Name != null || node is AeroArrayNode)) {
+                            AddLine($"{id++} => \"{(node is AeroArrayNode ? node.Nodes[0].Name : node.Name)}\",");
+                        }
+                    });
+                }
+                UnIndent();
+                AddLine("};");
+                
+                AddLine("return str;");
+            }
+        }
+        
+        private void GenerateShadowFieldIdToType(ClassDeclarationSyntax cd, SemanticModel sm)
+        {
+            AddLine("// Returns a type for the shadow field id");
+            using (Function("public Type ShadowFieldIdToType(int id)")) {
+                AddLine("var obj = id switch");
+                AddLine("{");
+                Indent();
+                {
+                    var id       = 0;
+                    var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                    AeroSourceGraphGen.WalkTree(rootNode, node =>
+                    {
+                        // Just the top level ones, or arrays
+                        if (node.Depth == 0 && (node.Name != null || node is AeroArrayNode)) {
+                            AddLine($"{id++} => typeof({node.TypeStr}{(node?.Parent is AeroArrayNode ? "[]" : "")}),");
+                        }
+                    });
+                }
+                UnIndent();
+                AddLine("};");
+                
+                AddLine("return obj;");
+            }
+        }
+        
+        private void GenerateGetShadowFieldsData(ClassDeclarationSyntax cd, SemanticModel sm)
+        {
+            AddLine("// Get a list of the shadow fields in this view, with data if they are nullable and their id");
+            using (Function("public (string, int, Type, bool)[] GetShadowFieldsData()")) {
+                AddLine("var data = new (string, int, Type, bool)[]");
+                AddLine("{");
+                Indent();
+                {
+                    var id       = 0;
+                    var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                    AeroSourceGraphGen.WalkTree(rootNode, node =>
+                    {
+                        // Just the top level ones, or arrays
+                        if (node.Depth == 0 && (node.Name != null || node is AeroArrayNode)) {
+                            AddLine($"new (\"{(node is AeroArrayNode ? node.Nodes[0].Name : node.Name)}\", {id++}, typeof({node.TypeStr}{(node?.Parent is AeroArrayNode ? "[]" : "")}), {node.IsNullable.ToString().ToLower()}),");
+                        }
+                    });
+                }
+                UnIndent();
+                AddLine("};");
+                
+                AddLine("return data;");
+            }
         }
     }
 }

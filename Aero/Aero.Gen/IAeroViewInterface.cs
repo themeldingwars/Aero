@@ -16,5 +16,14 @@ namespace Aero.Gen
 
         // Will clear the internal data tracking if a field has been changed
         public void ClearViewChanges();
+        
+        // Returns the name for the shadow field id
+        public string ShadowFieldIdToName(int id);
+        
+        // Returns a type for the shadow field id
+        public Type ShadowFieldIdToType(int id);
+        
+        // Get a list of the shadow fields in this view, with data if they are nullable and their id
+        public (string, int, Type, bool)[] GetShadowFieldsData();
     }
 }
