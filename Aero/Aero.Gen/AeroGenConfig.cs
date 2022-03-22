@@ -8,7 +8,7 @@ namespace Aero.Gen
         public static string Prefix         = "Aero_";
         public        bool   Enabled        = true;
         public        bool   BoundsCheck    = false;
-        public        bool   DiagLogging    = false;
+        public        bool   DiagLogging    = true;
         public        bool   LogReadsWrites = false; // Needs DiagLogging to be enabled too
 
         public static AeroGenConfig Load(AnalyzerConfigOptions configOptions)

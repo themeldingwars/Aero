@@ -35,6 +35,7 @@ namespace Aero.Gen
             UsingsToAdd.Add("System.Text");
             UsingsToAdd.Add("System.Numerics");
             UsingsToAdd.Add("System.Runtime.CompilerServices");
+            UsingsToAdd.Add("Aero.Gen");
         }
 
         public class AeroTypeHandler
@@ -402,6 +403,8 @@ namespace Aero.Gen
                     if (isViewClass) {
                         GenerateViewFunctions(cd, sm);
                     }
+
+                    AddLine("public System.Collections.Generic.List<AeroReadLog> GetDiagReadLogs() => ReadLogs;");
                 }
             }
 
@@ -414,7 +417,11 @@ namespace Aero.Gen
             AddLines(
                 "public List<string> DiagLogs = new List<string>();",
                 "private void LogDiag(string msg) => DiagLogs.Add(msg);",
-                ""
+                "",
+                "public System.Collections.Generic.List<AeroReadLog> ReadLogs = new System.Collections.Generic.List<AeroReadLog>();",
+                "",
+                "public bool ShouldSerializeDiagLogs() => false;",
+                "public bool ShouldSerializeReadLogs() => false;"
             );
         }
 
@@ -445,6 +452,8 @@ namespace Aero.Gen
         {
             using (Function("public int Unpack(ReadOnlySpan<byte> data)")) {
                 AddLine("int offset = 0;");
+                AddLine("int offsetBefore = 0;");
+                AddLine("ReadLogs.Clear();");
                 AddLine();
 
                 var isView = AgUtils.IsViewClass(cd, SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree));
@@ -467,8 +476,13 @@ namespace Aero.Gen
         private int CreateUnpackerOnNode(bool isView, AeroNode node, ref int nullableIdx)
         {
             if (isView && node.IsNullable) {
-                AddLine($"if ({GenerateViewFieldIdx(nullableIdx++)}) {{");
+                AddLine($"if ({GenerateViewFieldIdx(nullableIdx++)}) //{{");
+                if (node is not AeroBlockNode) AddLine("{");
                 Indent();
+            }
+
+            if (Config.DiagLogging && node is not AeroArrayNode && node is not AeroIfNode) {
+                //AddLine("offsetBefore = offset;");
             }
 
             if (node is AeroFieldNode fieldNode) {
@@ -494,16 +508,60 @@ namespace Aero.Gen
                     $"{arrayNode.Nodes.First().Name}Count++;"); // TODO: Move this to after the loop so its only one increment, awkward atm to know when we have just done a loops closing bracket
             }
 
+            LogDiagRead(node);
+
             if (isView && node.IsNullable) {
                 UnIndent();
-                AddLine("}");
+                if (node is not AeroBlockNode) AddLine("}");
             }
 
             return nullableIdx;
         }
 
+        private void LogDiagRead(AeroNode node, bool isArrayDefine = false, bool iaAeroBlockDefine = false)
+        {
+            if (!Config.DiagLogging) return;
+            
+            var parentName = node?.Parent.GetFullName().Replace("[", "[{").Replace("]", "}]");
+            var name       = node.GetFullName().Replace("[", "[{").Replace("]", "}]");
+
+            if (parentName != null && parentName.Length > 0) {
+                name = name.Replace(parentName, "").TrimStart('.').TrimStart('[').TrimEnd(']');
+            }
+
+            if (isArrayDefine) {
+                AddLine($"ReadLogs.Add(new AeroReadLog($\"{parentName}\", " +
+                        $"$\"{name}\", "                                    +
+                        $"true, "                                           +
+                        $"typeof({node.TypeStr.TrimEnd('[', ']')}), "        +
+                        $"offset));");
+            }
+            else if (iaAeroBlockDefine) {
+                AddLine($"ReadLogs.Add(new AeroReadLog($\"{parentName}\", " +
+                        $"$\"{name}\", "                                    +
+                        $"false, "                                          +
+                        $"typeof({node.TypeStr.TrimEnd('[', ']')}), "        +
+                        $"offset));");
+            } 
+            else if (node is not AeroArrayNode && node is not AeroIfNode && node is not AeroBlockNode) {
+                
+                //AddLine($"ReadLogs.Add(($\"{name}, {parentName}\", offsetBefore, offset  - offsetBefore, \"{node.TypeStr}\", {node.GetFullName()}));");
+                AddLine($"ReadLogs.Add(new AeroReadLog($\"{parentName}\", " +
+                        $"$\"{name}\", "                                    +
+                        $"offsetBefore, "                                   +
+                        $"offset  - offsetBefore, "                         +
+                        $"\"{node.TypeStr}\", "                               +
+                        $"typeof({node.TypeStr})));");
+                AddLine("offsetBefore = offset;");
+            }
+        }
+
         private void CreateUnpackerPreNode(AeroNode node)
         {
+            if (node is AeroBlockNode) {
+                LogDiagRead(node, iaAeroBlockDefine: true);
+            }
+            
             if (node is AeroArrayNode arrayNode) {
                 if (arrayNode.Mode == AeroArrayNode.Modes.ReadToEnd) {
                     AddLine($"{arrayNode.Nodes.First().Name}Count = 0;");
@@ -644,7 +702,8 @@ namespace Aero.Gen
         private void CreatePackerOnNode(AeroNode node, bool noNullableCheck = false)
         {
             if (node.IsNullable && noNullableCheck) {
-                AddLine($"if ({node.GetFullName()}Prop.HasValue) {{"); // TODO: use bitfield
+                AddLine($"if ({node.GetFullName()}Prop.HasValue)"); // TODO: use bitfield
+                if (node is not AeroBlockNode) AddLine("{");
                 Indent();
             }
 
@@ -666,7 +725,7 @@ namespace Aero.Gen
 
             if (node.IsNullable && noNullableCheck) {
                 UnIndent();
-                AddLine("}");
+                if (node is not AeroBlockNode) AddLine("}");
             }
         }
 
@@ -758,6 +817,7 @@ namespace Aero.Gen
                     if (createArray) {
                         AddLine(
                             $"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{refFullName}];");
+                        LogDiagRead(arrayNode, isArrayDefine: true);
                     }
 
                     AddLine($"for (int {idxName} = 0; {idxName} < {refFullName}; {idxName}++)");
@@ -779,6 +839,7 @@ namespace Aero.Gen
 
                         if (createArray) {
                             AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{prefixName}];");
+                            LogDiagRead(arrayNode, isArrayDefine: true);
                         }
 
                         AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");
@@ -792,6 +853,7 @@ namespace Aero.Gen
                 case AeroArrayNode.Modes.Fixed:
                     if (createArray) {
                         AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{arrayNode.Length}];");
+                        LogDiagRead(arrayNode, isArrayDefine: true);
                     }
 
                     AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.Length}; {idxName}++)");
@@ -801,6 +863,7 @@ namespace Aero.Gen
                     if (createArray) {
                         AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{-arrayNode.Length}];");
                         AddLine($"var {idxName} = 0;");
+                        LogDiagRead(arrayNode, isArrayDefine: true);
                         AddLine("while (offset < data.Length)");
                     }
                     else {

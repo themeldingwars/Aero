@@ -12,8 +12,12 @@ namespace Aero.TestCases
         
         [AeroNullable]
         private ActiveDataStruct ActiveData;
+
+        [AeroNullable] private int TestNullable;
         
-       // public ScopeBubbleInfoData            ScopeBubbleInfo;
+        // [AeroNullable] [AeroArray(4)] private int[] TestNullableArray;
+
+        // public ScopeBubbleInfoData            ScopeBubbleInfo;
     }
     
     [AeroBlock]

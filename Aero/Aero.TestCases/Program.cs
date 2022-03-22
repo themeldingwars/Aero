@@ -245,10 +245,24 @@ public class Test2
                 Console.WriteLine(diag);
             }
 
-            var data = new byte[] { 0x02, 0x01, 0x41, 0x9C, 0xFF, 0xFF, 0xFF }.AsSpan();
+            //var data = new byte[] { 0x02, 0x01, 0x41, 0x9C, 0xFF, 0xFF, 0xFF }.AsSpan();
+            var data = new byte[10000000];
+            new Random().NextBytes(data);
             var test = new TestCase1Main();
-            //test.Unpack(data);
+            
+            try {
+                test.Unpack(data);
+            }
+            catch (Exception e) {
+                Console.WriteLine(e);
+            }
+            
             //test.GetPackedSize();
+
+            foreach (var readLog in test.GetDiagReadLogs()) {
+                //Console.WriteLine($"{readLog.Item1}, {readLog.Item2}, {readLog.Item3}, {readLog.Item4}, {readLog.Item5}");
+                Console.WriteLine(readLog.ToString());
+            }
 
             var buffer = new Span<byte>();
             //test.Pack(buffer);

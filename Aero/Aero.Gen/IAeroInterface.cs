@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Aero.Gen
 {
@@ -13,5 +14,9 @@ namespace Aero.Gen
 
         // Packs all the data in this class into the buffer, returns how many bytes were packed
         public int Pack(Span<byte> buffer);
+        
+        // Get read logs, has the field name, offset and length
+        // should only have data in debug builds
+        public List<AeroReadLog> GetDiagReadLogs();
     }
 }

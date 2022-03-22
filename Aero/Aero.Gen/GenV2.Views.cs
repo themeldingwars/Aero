@@ -68,7 +68,16 @@ namespace Aero.Gen
             ViewNullableFieldsFor(numNullableFields, (i) => AddLine($"buffer[offset++] = {NULLABLE_FIELD_BASE_NAME}_{i};"));
 
         private void GenerateViewNullableFieldUnpacker(int numNullableFields) =>
-            ViewNullableFieldsFor(numNullableFields, (i) => AddLine($"{NULLABLE_FIELD_BASE_NAME}_{i} = data[offset++];"));
+            ViewNullableFieldsFor(numNullableFields, (i) =>
+            {
+                AddLine($"{NULLABLE_FIELD_BASE_NAME}_{i} = data[offset++];");
+                
+                if (Config.DiagLogging) {
+                    //AddLine($"ReadLogs.Add((\"{NULLABLE_FIELD_BASE_NAME}_{i}\", offsetBefore, offset - offsetBefore, \"byte\", {NULLABLE_FIELD_BASE_NAME}_{i}));");
+                    AddLine($"ReadLogs.Add(new AeroReadLog(\"\", \"{NULLABLE_FIELD_BASE_NAME}_{i}\", offsetBefore, offset - offsetBefore, \"byte\", typeof(byte)));");
+                    AddLine("offsetBefore = offset;");
+                }
+            });
 
         private void GenerateViewDirtyFieldTrackers(int numFields) =>
             ViewNullableFieldsFor(numFields, (i) => AddLine($"private byte {DIRTY_FIELD_BASE_NAME}_{i};"));
@@ -152,12 +161,21 @@ namespace Aero.Gen
             AddLine("// Unpack the changes in the span and apply them to the class");
             using (Function("public int UnpackChanges(ReadOnlySpan<byte> data)")) {
                 AddLine("int offset = 0;");
+                AddLine("int offsetBefore = 0;");
+                AddLine("ReadLogs.Clear();");
                 AddLine();
 
                 var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
 
                 using (DoWhile("offset < data.Length")) {
                     AddLine("var id = data[offset++];");
+
+                    if (Config.DiagLogging) {
+                        //AddLine($"ReadLogs.Add(($\"SF Id: {{id}}\", offsetBefore, offset - offsetBefore, \"byte\", id));");
+                        AddLine($"ReadLogs.Add(new AeroReadLog(\"\", $\"SF Id: {{id}}\", offsetBefore, offset - offsetBefore, \"byte\", typeof(byte)));");
+                        AddLine("offsetBefore = offset;");
+                    }
+                    
                     var shadowFieldIdx               = 0;
                     var nullableIdx                  = 0;
                     var nullableFieldsForNullSetting = new Dictionary<int, AeroNode>();
