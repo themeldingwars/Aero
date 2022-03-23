@@ -213,6 +213,11 @@ The added functions are:
 * ``GetPackedSize()``
 * ``UnpackChanges(ReadOnlySpan<byte> data)``
 * ``PackChanges(Span<byte> buffer, bool clearDirtyAfterSend = true)``
+* ``ShadowFieldIdToName(int id)`` Returns a `string` name for the shadow field with this id
+* ``ShadowFieldIdToType(int id)`` Returns the `Type` for the shadow field with this id
+* ``GetShadowFieldsData()`` Returns an array of `(string, int, Type, bool)` for all the shadowfields in this class, (name, id, Type, nullable)
+
+If compiled with the Diag Logging enabled then there will also be a function ``GetDiagReadLogs()`` that will return a `List<AeroReadLog>` for each read that was done in the ``Unpack`` or ``UnpackChanges`` functions.
 
 For each field in a view call a property will be genrated, for non nullables the set on this will mark that value as dirty so a ``PackChanges`` call will only pack what has changed.
 This is why feilds should be defined as private to ensure only the propetys can be called and those changes can be tracked.

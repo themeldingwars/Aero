@@ -297,7 +297,7 @@ namespace Aero.Gen
                 var numFields = GetNumFields(cd);
                 var numBytes  = (int) Math.Ceiling((double) numFields / 8);
                 for (int i = 0; i < numBytes; i++) {
-                    AddLine($"{DIRTY_FIELD_BASE_NAME}_{i + 1} = 0;");
+                    AddLine($"{DIRTY_FIELD_BASE_NAME}_{i + 1} = 0xFF;");
                 }
             }
         }
