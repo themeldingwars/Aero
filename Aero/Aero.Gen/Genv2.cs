@@ -489,7 +489,7 @@ namespace Aero.Gen
             if (node is AeroFieldNode fieldNode) {
                 var name = fieldNode.GetFullName();
                 if (node.Parent?.Parent is {IsNullable: true, IsRoot: false}) {
-                    name = $"{node.Parent.GetFullName()}.Value.{node.Name}";
+                    name = $"{node.Parent.GetFullName()}.{node.Name}";
                 }
 
                 AddReader(name,
