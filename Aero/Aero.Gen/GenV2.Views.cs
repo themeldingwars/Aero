@@ -162,7 +162,7 @@ namespace Aero.Gen
             using (Function("public int UnpackChanges(ReadOnlySpan<byte> data)")) {
                 AddLine("int offset = 0;");
                 AddLine("int offsetBefore = 0;");
-                AddLine("ReadLogs.Clear();");
+                if (Config.DiagLogging) AddLine("ReadLogs.Clear();");
                 AddLine();
 
                 var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);

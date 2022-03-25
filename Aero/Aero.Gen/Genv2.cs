@@ -405,7 +405,7 @@ namespace Aero.Gen
                         GenerateViewFunctions(cd, sm);
                     }
 
-                    AddLine("public System.Collections.Generic.List<AeroReadLog> GetDiagReadLogs() => ReadLogs;");
+                    AddLine($"public System.Collections.Generic.List<AeroReadLog> GetDiagReadLogs() => {(Config.DiagLogging ? "ReadLogs" : "null")};");
                 }
             }
 
@@ -454,7 +454,7 @@ namespace Aero.Gen
             using (Function("public int Unpack(ReadOnlySpan<byte> data)")) {
                 AddLine("int offset = 0;");
                 AddLine("int offsetBefore = 0;");
-                AddLine("ReadLogs.Clear();");
+                if (Config.DiagLogging) AddLine("ReadLogs.Clear();");
                 AddLine();
 
                 var isView = AgUtils.IsViewClass(cd, SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree));
