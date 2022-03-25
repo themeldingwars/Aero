@@ -189,9 +189,10 @@ namespace Aero.Gen
         {
             var rootNode = new AeroNode
             {
-                IsRoot = parent == null,
-                Depth  = parent?.Depth ?? -1,
-                Parent = parent
+                IsRoot     = parent == null,
+                Depth      = parent?.Depth ?? -1,
+                Parent     = parent,
+                IsNullable = false
             };
 
             state ??= new BuildTreeState();
@@ -205,9 +206,11 @@ namespace Aero.Gen
                 var typeInfo  = sModel.GetTypeInfo(field.Declaration.Type).Type;
                 var typeStr   = typeInfo?.ToString();
 
-                if (typeStr.EndsWith("?") || AgUtils.HasNodeWithName<AttributeSyntax>(field, AeroNullable.Name)) {
+                if (AgUtils.HasNodeWithName<AttributeSyntax>(field, AeroNullable.Name)) {
                     currentNode.IsNullable = true;
-                    typeStr                = typeStr.TrimEnd('?');
+                }
+                else {
+                    currentNode.IsNullable = false;
                 }
 
                 // Ifs

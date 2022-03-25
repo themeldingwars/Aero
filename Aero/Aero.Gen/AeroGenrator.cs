@@ -114,7 +114,7 @@ namespace Aero.Gen
                 }
             }
             catch (Exception e) {
-                context.ReportDiagnostic(Diagnostic.Create(GenericError, LastCheckedField != default ? LastCheckedField.GetLocation() : Location.None, $"Error processing file {lastClassGenerated}: {e.ToString()} {e.Source}"));
+                context.ReportDiagnostic(Diagnostic.Create(GenericError, LastCheckedField != default ? LastCheckedField.GetLocation() : Location.None, $"Error processing file {lastClassGenerated}: {e.ToString()} {e.Source} Trace: {e.StackTrace}"));
             }
         }
 

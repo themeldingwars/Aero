@@ -226,6 +226,63 @@ public class Test2
         
     }
 
+    [Aero(true)]
+    public partial class Outpost_ObserverView
+    {
+
+        private uint OutpostName;
+
+        private Vector3 Position;
+
+
+        private uint LevelBandId;
+        private byte  SinUnlockIndex;
+        private int   TeleportCost;
+        private float Progress; // Dynamic_00
+
+
+        private byte FactionId;         // Dynamic_01
+        private byte   Team;            // Dynamic_02
+        private byte   UnderAttack;     // Dynamic_03
+        private byte   OutpostType;     // Dynamic_04
+        private uint   PossibleBuffsId; // Dynamic_05
+        private byte   PowerLevel;      // Dynamic_06
+        private ushort MWCurrent;       // Dynamic_07
+        private ushort MWMax;           // Dynamic_08
+        private uint   MapMarkerTypeId; // Dynamic_09
+        private float  Radius;          // Dynamic_10
+
+        [AeroArray(4)]
+        private byte[] Dynamic_11;
+
+        [AeroNullable] private uint NearbyResourceItems_0;
+        [AeroNullable] private uint NearbyResourceItems_1;
+        [AeroNullable] private uint NearbyResourceItems_2;
+        [AeroNullable] private uint NearbyResourceItems_3;
+        [AeroNullable] private uint NearbyResourceItems_4;
+        [AeroNullable] private uint NearbyResourceItems_5;
+        [AeroNullable] private uint NearbyResourceItems_6;
+        [AeroNullable] private uint NearbyResourceItems_7;
+        [AeroNullable] private uint NearbyResourceItems_8;
+        [AeroNullable] private uint NearbyResourceItems_9;
+        [AeroNullable] private uint NearbyResourceItems_10;
+        [AeroNullable] private uint NearbyResourceItems_11;
+        [AeroNullable] private uint NearbyResourceItems_12;
+        [AeroNullable] private uint NearbyResourceItems_13;
+        [AeroNullable] private uint NearbyResourceItems_14;
+        [AeroNullable] private uint NearbyResourceItems_15;
+
+        private ScopeBubbleInfoData ScopeBubbleInfo;
+    }
+
+    [AeroBlock]
+    public struct ScopeBubbleInfoData
+    {
+        // Don't know how this works but its used everywhere so keeping it in a struct
+        [AeroArray(8)]
+        public byte[] Unk;
+    }
+
 }");
 
         public enum BitfieldMask : ulong
@@ -246,7 +303,7 @@ public class Test2
             }
 
             //var data = new byte[] { 0x02, 0x01, 0x41, 0x9C, 0xFF, 0xFF, 0xFF }.AsSpan();
-            var data = new byte[10000000];
+            /*var data = new byte[10000000];
             new Random().NextBytes(data);
             var test = new TestCase1Main();
             
@@ -263,6 +320,7 @@ public class Test2
                 //Console.WriteLine($"{readLog.Item1}, {readLog.Item2}, {readLog.Item3}, {readLog.Item4}, {readLog.Item5}");
                 Console.WriteLine(readLog.ToString());
             }
+            */
 
             var buffer = new Span<byte>();
             //test.Pack(buffer);
