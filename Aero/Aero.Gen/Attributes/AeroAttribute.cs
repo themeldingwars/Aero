@@ -7,11 +7,16 @@ namespace Aero.Gen.Attributes
     {
         public static string Name = "Aero";
 
-        public bool IsView = false;
+        public AeroGenTypes AeroType = AeroGenTypes.Normal;
 
-        public AeroAttribute(bool isView = false)
+        public AeroAttribute()
         {
-            IsView = isView;
+            AeroType = AeroGenTypes.Normal;
+        }
+        
+        public AeroAttribute(AeroGenTypes type)
+        {
+            AeroType = type;
         }
 
     }

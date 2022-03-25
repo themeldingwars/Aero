@@ -192,14 +192,14 @@ public partial class Example3
 ```
 
 # Views
-To mark a class as a view add the attribute ``[Aero(true)]`` to it, the true marks it as a view and will genrate the extra data.
+To mark a class as a view add the attribute ``[Aero(AeroGenTypes.View)]`` or ``[Aero(AeroGenTypes.Controller)]`` to it, the true marks it as a view and will genrate the extra data.
 
 Fields in the class will get a ``ShadowField`` idx based on the order that they are defined in.
 Nullables can be marked as such with the ``[AeroNullable]``
 
 Example:
 ```csharp
-[Aero(true)]
+[Aero(AeroGenTypes.View)]
 public partial class SimpleViewWithNullable
 {
     public int   TestValue;

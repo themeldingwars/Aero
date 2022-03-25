@@ -1,10 +1,11 @@
 ﻿using System.Linq;
+using Aero.Gen;
 using Aero.Gen.Attributes;
 using NUnit.Framework;
 
 namespace Aero.UnitTests
 {
-    [Aero(true)]
+    [Aero(AeroGenTypes.View)]
     public partial class SimpleView
     {
         public int   TestValue;
@@ -13,7 +14,7 @@ namespace Aero.UnitTests
         [AeroArray(2)] public int[] TestArrayValues;
     }
 
-    [Aero(true)]
+    [Aero(AeroGenTypes.View)]
     public partial class SimpleViewWithNullable
     {
         public int   TestValue;

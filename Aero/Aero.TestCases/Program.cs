@@ -20,6 +20,7 @@ namespace Aero.TestCases
 using System.Net.Security;
 using Aero.Gen.Attributes;
 using System.Numerics;
+using Aero.Gen;
 
 namespace Aero.TestCases
 {
@@ -33,7 +34,7 @@ namespace Aero.TestCases
         Flag4
     }
 
-    [Aero(true)]
+    [Aero(AeroGenTypes.View)]
     public partial class ViewTypeTest
     {
         [AeroString]
@@ -226,7 +227,7 @@ public class Test2
         
     }
 
-    [Aero(true)]
+    [Aero(AeroGenTypes.View)]
     public partial class Outpost_ObserverView
     {
 

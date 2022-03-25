@@ -9,7 +9,7 @@ using System;
 
 namespace Aero.TestCases
 {
-    [Aero(true)]
+    [Aero(AeroGenTypes.View)]
     public partial class Melding_ObserverView_ShadowFieldUpdate
     {
         [AeroString]
@@ -56,7 +56,7 @@ namespace Aero.TestCases
     }
     
 
-    [Aero(true)]
+    [Aero(AeroGenTypes.View)]
     public partial class Outpost_ObserverView
     {
         [AeroSdb("dblocalization::LocalizedText", "id")]

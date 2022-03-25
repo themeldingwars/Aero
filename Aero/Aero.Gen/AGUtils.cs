@@ -104,7 +104,7 @@ namespace Aero.Gen
         public static IEnumerable<T> NodesWithName<T>(SyntaxNode root, string name) where T : SyntaxNode =>
             root.DescendantNodes().Where(x => x is T node &&
                                               node.DescendantNodes().OfType<IdentifierNameSyntax>()
-                                                  .First().Identifier.Text == name).Select(x => (T)x);
+                                                  .First().Identifier.Text == name).Select(x => (T) x);
 
         public static bool HasNodeWithName<T>(SyntaxNode root, string name) where T : SyntaxNode => NodesWithName<T>(root, name).FirstOrDefault() != default;
 
@@ -171,7 +171,7 @@ namespace Aero.Gen
             };
 
             var arrayAttr = NodeWithName<AttributeSyntax>(fd, AeroArrayAttribute.Name);
-            if (arrayAttr == null) return new AeroArrayInfo { IsArray = false };
+            if (arrayAttr == null) return new AeroArrayInfo {IsArray = false};
 
             var numArgs = arrayAttr.ArgumentList?.Arguments.Count ?? 0;
             if (numArgs == 1) {
@@ -210,7 +210,7 @@ namespace Aero.Gen
             };
 
             var arrayAttr = NodeWithName<AttributeSyntax>(fd, AeroStringAttribute.Name);
-            if (arrayAttr == null) return new AeroArrayInfo { IsArray = false };
+            if (arrayAttr == null) return new AeroArrayInfo {IsArray = false};
 
             var numArgs = arrayAttr.ArgumentList?.Arguments.Count ?? 0;
             if (numArgs == 1) {
@@ -244,28 +244,30 @@ namespace Aero.Gen
         {
             var numArgs = attributeSyantax.ArgumentList?.Arguments.Count ?? 0;
 
-                if (numArgs >= 3) {
-                    var msgType      = (AeroMessageIdAttribute.MsgType) Enum.Parse(typeof(AeroMessageIdAttribute.MsgType), attributeSyantax.ArgumentList.Arguments[0].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgType.", ""));
-                    var msgSrc       = (AeroMessageIdAttribute.MsgSrc) Enum.Parse(typeof(AeroMessageIdAttribute.MsgSrc), attributeSyantax.ArgumentList.Arguments[1].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgSrc.", ""));
-                    var messageId    = int.Parse(attributeSyantax.ArgumentList.Arguments[2].Expression.ToString());
-                    int controllerId = -1;
+            if (numArgs >= 3) {
+                var msgType      = (AeroMessageIdAttribute.MsgType) Enum.Parse(typeof(AeroMessageIdAttribute.MsgType), attributeSyantax.ArgumentList.Arguments[0].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgType.", ""));
+                var msgSrc       = (AeroMessageIdAttribute.MsgSrc) Enum.Parse(typeof(AeroMessageIdAttribute.MsgSrc), attributeSyantax.ArgumentList.Arguments[1].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgSrc.", ""));
+                var messageId    = int.Parse(attributeSyantax.ArgumentList.Arguments[2].Expression.ToString());
+                int controllerId = -1;
 
-                    if (numArgs >= 4) {
-                        controllerId = messageId;
-                        messageId    = int.Parse(attributeSyantax.ArgumentList.Arguments[3].Expression.ToString());
-                    }
-
-                    return new AeroMessageIdAttribute(msgType, msgSrc, controllerId, messageId);
+                if (numArgs >= 4) {
+                    controllerId = messageId;
+                    messageId    = int.Parse(attributeSyantax.ArgumentList.Arguments[3].Expression.ToString());
                 }
 
-                return null;
+                return new AeroMessageIdAttribute(msgType, msgSrc, controllerId, messageId);
+            }
+
+            return null;
         }
 
         public static bool IsViewClass(ClassDeclarationSyntax cd, SemanticModel sm)
         {
             var aeroAttr = NodeWithName<AttributeSyntax>(cd, AeroAttribute.Name);
 
-            if (aeroAttr.ArgumentList is {Arguments: {Count: 1}} && sm.GetConstantValue(aeroAttr.ArgumentList.Arguments[0].Expression).Value is true) {
+            if (aeroAttr.ArgumentList is {Arguments: {Count: 1}}
+             && (aeroAttr.ArgumentList.Arguments[0].Expression.ToFullString().EndsWith(nameof(AeroGenTypes.View))
+             || aeroAttr.ArgumentList.Arguments[0].Expression.ToFullString().EndsWith(nameof(AeroGenTypes.Controller)))) {
                 return true;
             }
 

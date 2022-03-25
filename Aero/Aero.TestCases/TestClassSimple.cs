@@ -183,7 +183,7 @@ namespace Aero.TestCases
     {
     }
 
-    [Aero(true)]
+    [Aero(AeroGenTypes.View)]
     public partial class ViewTypeTest
     {
         [AeroString] private string Name;
