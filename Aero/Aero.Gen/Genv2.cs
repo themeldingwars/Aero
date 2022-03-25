@@ -600,8 +600,8 @@ namespace Aero.Gen
         private void GetPackedSizeOnNode(bool isView, AeroNode node)
         {
             if (isView && node.IsNullable) {
-                AddLine($"if ({node.GetFullName()}Prop.HasValue) {{"); // TODO: replace with bit field check instead
-                Indent();
+                AddLine($"if ({node.GetFullName()}Prop.HasValue)"); // TODO: replace with bit field check instead
+                //Indent();
             }
 
             if (node is AeroFieldNode fieldNode) {
@@ -635,7 +635,7 @@ namespace Aero.Gen
                     AddLine($"offset += {length} + {stringNode.GetFullName()}.Length; // string");
                 }
             }
-            else if (node is AeroArrayNode arrayNode && arrayNode.IsFixedSize() && arrayNode.Mode != AeroArrayNode.Modes.Fixed) {
+            else if (node is AeroArrayNode arrayNode && arrayNode.Mode != AeroArrayNode.Modes.Fixed) {
                 var prefixLen = arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed
                     ? GetTypeSize(arrayNode.PrefixTypeStr)
                     : 0;
@@ -649,20 +649,25 @@ namespace Aero.Gen
                     $"offset += {arrayNode2.GetSize()}; // array fixed {node.Name}");
                 node.Nodes.Clear();
             }
+            else if (node is AeroArrayNode arrayNode3) {
+                AddLine(
+                    $"offset += ({arrayNode3.GetSize()} * {arrayNode3.GetFullName()}.Length); // array non fixed {node.Name}");
+                node.Nodes.Clear();
+            }
             else if (node is AeroBlockNode && node.IsFixedSize()) {
                 AddLine($"offset += {node.GetSize()}; // Fixed size block");
                 node.Nodes.Clear();
             }
 
             if (isView && node.IsNullable) {
-                UnIndent();
-                AddLine("}");
+                //UnIndent();
+                //AddLine("}");
             }
         }
 
         private void GetPackedSizePreNode(AeroNode node)
         {
-            if (node is AeroArrayNode arrayNode && !arrayNode.IsFixedSize()) {
+            if (node is AeroArrayNode arrayNode && arrayNode.GetSize() < 0) {
                 var idxName = $"idx{arrayNode.Depth}";
                 AddLine(
                     $"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");

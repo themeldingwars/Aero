@@ -89,7 +89,14 @@ namespace Aero.Gen
         public string RefFieldName;
         public string PrefixTypeStr;
 
-        public override bool IsFixedSize() => GetSize() != -1;
+        public override bool IsFixedSize()
+        {
+            if (Nodes[0].IsFixedSize() && Mode == Modes.Fixed) {
+                return true;
+            }
+
+            return false;
+        }
 
         public override int GetSize()
         {
@@ -132,7 +139,7 @@ namespace Aero.Gen
         {
             int combinedSize = 0;
             foreach (var node in Nodes) {
-                if (node.GetSize() == -1) {
+                if (node.GetSize() == -1 || !node.IsFixedSize()) {
                     return -1;
                 }
 
@@ -384,7 +391,7 @@ namespace Aero.Gen
                     sb.AppendLine("Root Node");
                 }
                 else if (node is AeroArrayNode arrayNode) {
-                    sb.Append($"📚 Array, {arrayNode.Mode}");
+                    sb.Append($"📚 Array, {arrayNode.Mode}, IsFixed: {arrayNode.IsFixedSize()}, Size: {arrayNode.GetSize()} ");
                     if (arrayNode.Mode == AeroArrayNode.Modes.Fixed) {
                         sb.Append($"Len, {arrayNode.Length}");
                     }
@@ -403,7 +410,7 @@ namespace Aero.Gen
                         $"🖊️ Field, Name: {afnode.Name}, Type: {afnode.TypeStr}, IsEnum: {afnode.IsEnum}, IsFlags: {afnode.IsFlags}, IsNullable: {afnode.IsNullable}, ");
                 }
                 else if (node is AeroBlockNode blockNode) {
-                    sb.Append($"📦 Block, Name: {blockNode.Name}, Type: {blockNode.TypeStr}, IsNullable: {blockNode.IsNullable}");
+                    sb.Append($"📦 Block, Name: {blockNode.Name}, Type: {blockNode.TypeStr}, IsNullable: {blockNode.IsNullable}, Size: {blockNode.GetSize()}");
                 }
                 else if (node is AeroStringNode stringNode) {
                     sb.Append($"✍️ String, Name: {stringNode.Name}, Mode: {stringNode.Mode}, IsNullable: {stringNode.IsNullable}");

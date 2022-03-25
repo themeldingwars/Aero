@@ -183,6 +183,18 @@ namespace Aero.TestCases
     {
     }
 
+    [AeroBlock] 
+    public struct NonFixedBlock
+    {
+        public byte Length;
+        
+        [AeroArray(nameof(Length))]
+        public int[] Test;
+
+        //[AeroIf(nameof(Length), 2)]
+        public int Test2;
+    }
+
     [Aero(AeroGenTypes.View)]
     public partial class ViewTypeTest
     {
@@ -190,7 +202,9 @@ namespace Aero.TestCases
 
         private int Id;
 
-        //private TestSubDataOne TestBlock;
+        [AeroNullable] private TestSubDataOne TestBlock;
+        
+        [AeroNullable] private NonFixedBlock TestBlockTwo;
 
         //public Vector3 Position;
         [AeroNullable] public int Number;
