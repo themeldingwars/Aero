@@ -406,6 +406,7 @@ namespace Aero.Gen
                     }
 
                     AddLine($"public System.Collections.Generic.List<AeroReadLog> GetDiagReadLogs() => {(Config.DiagLogging ? "ReadLogs" : "null")};");
+                    AddLine($"public void ClearReadLogs() {{ {(Config.DiagLogging ? "ReadLogs = new System.Collections.Generic.List<AeroReadLog>();" : "")} }}");
                 }
             }
 

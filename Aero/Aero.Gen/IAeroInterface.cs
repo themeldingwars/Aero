@@ -18,5 +18,8 @@ namespace Aero.Gen
         // Get read logs, has the field name, offset and length
         // should only have data in debug builds
         public List<AeroReadLog> GetDiagReadLogs();
+
+        // Clear the read log list
+        public void ClearReadLogs();
     }
 }
