@@ -10,6 +10,7 @@ namespace Aero.Gen
         public        bool   BoundsCheck    = false;
         public        bool   DiagLogging    = true;
         public        bool   LogReadsWrites = false; // Needs DiagLogging to be enabled too
+        public        bool   DumpAST        = true;
 
         public static AeroGenConfig Load(AnalyzerConfigOptions configOptions)
         {

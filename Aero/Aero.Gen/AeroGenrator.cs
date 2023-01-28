@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading;
 using Aero.Gen.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using Newtonsoft.Json;
 
 namespace Aero.Gen
 {
@@ -99,6 +101,10 @@ namespace Aero.Gen
 
                         lastClassGenerated = AgUtils.GetClassName(cls);
 
+                        if (config.DumpAST) {
+                            DumpAST(treeRoot, cls, context);
+                        }
+
                         var genv2 = new Genv2(context, config);
                         (string file, string src) = genv2.GenClass(cls);
                         //Debug.Write(src);
@@ -115,6 +121,23 @@ namespace Aero.Gen
             }
             catch (Exception e) {
                 context.ReportDiagnostic(Diagnostic.Create(GenericError, LastCheckedField != default ? LastCheckedField.GetLocation() : Location.None, $"Error processing file {lastClassGenerated}: {e.ToString()} {e.Source} Trace: {e.StackTrace}"));
+            }
+        }
+
+        public void DumpAST(AeroNode root, ClassDeclarationSyntax cd, GeneratorExecutionContext context)
+        {
+            try {
+                var ns = AgUtils.GetNamespace(cd);
+                var cn = AgUtils.GetClassName(cd);
+                //var dir      = context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.projectdir", out var result) ? result : null;
+                var fileName = Path.Combine("AeroAST", $"{ns}.{cn}_AST.json");
+                Directory.CreateDirectory("AeroAST");
+
+                var astJson = JsonConvert.SerializeObject(root, Formatting.Indented);
+                File.WriteAllText(fileName, astJson);
+            }
+            catch (Exception e) {
+                
             }
         }
 

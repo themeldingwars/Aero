@@ -5,19 +5,22 @@ using System.Text;
 using Aero.Gen.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Newtonsoft.Json;
 
 namespace Aero.Gen
 {
     public class AeroNode
     {
-        public string         Name = null;
-        public string         TypeStr;
-        public int            Depth;
-        public bool           IsRoot;
-        public AeroNode       Parent;
-        public List<AeroNode> Nodes      = new();
-        public int            Index      = 0;
-        public bool           IsNullable = false;
+        public virtual string ASTNodeType { get; } = "AeroNode";
+        
+        public              string         Name = null;
+        public              string         TypeStr;
+        public              int            Depth;
+        public              bool           IsRoot;
+        [JsonIgnore] public AeroNode       Parent;
+        public              List<AeroNode> Nodes      = new();
+        public              int            Index      = 0;
+        public              bool           IsNullable = false;
 
         // Get the full name of this node in the list, eg test.test2.int;
         public string GetFullName(bool ingoreLastArray = false)
@@ -66,9 +69,10 @@ namespace Aero.Gen
 
     public class AeroFieldNode : AeroNode
     {
-        public string EnumStr;
-        public bool   IsEnum;
-        public bool   IsFlags;
+        public override string ASTNodeType { get; } = "AeroFieldNode";
+        public          string EnumStr;
+        public          bool   IsEnum;
+        public          bool   IsFlags;
 
         public override bool IsFixedSize() => true;
         public override int  GetSize()     => Genv2.GetTypeSize(TypeStr);
@@ -76,6 +80,8 @@ namespace Aero.Gen
 
     public class AeroArrayNode : AeroNode
     {
+        public override string ASTNodeType { get; } = "AeroArrayNode";
+        
         public enum Modes : byte
         {
             Ref,
@@ -123,8 +129,10 @@ namespace Aero.Gen
 
     public class AeroIfNode : AeroNode
     {
-        public string           Statement;
-        public List<AeroIfInfo> IfInfos;
+        public override string           ASTNodeType { get; } = "AeroIfNode";
+        
+        public          string           Statement;
+        public          List<AeroIfInfo> IfInfos;
 
         public override bool IsFixedSize() => false;
 
@@ -133,7 +141,9 @@ namespace Aero.Gen
 
     public class AeroBlockNode : AeroNode
     {
-        public override bool IsFixedSize() => GetSize() != -1;
+        public override string ASTNodeType   { get; } = "AeroBlockNode";
+        
+        public override bool   IsFixedSize() => GetSize() != -1;
 
         public override int GetSize()
         {
@@ -152,6 +162,8 @@ namespace Aero.Gen
 
     public class AeroStringNode : AeroNode
     {
+        public override string ASTNodeType { get; } = "AeroStringNode";
+        
         public enum Modes : byte
         {
             Ref,
