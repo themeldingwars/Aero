@@ -56,6 +56,14 @@ namespace Aero.Gen
                 }
             },
             {
+                "sbyte", new AeroTypeHandler
+                {
+                    Size   = 1,
+                    Reader = (name, typeCast) => $"{name} = {typeCast}(sbyte)data[offset];",
+                    Writer = (name, typeCast) => $"buffer[offset] = {typeCast}((byte){name});",
+                }
+            },
+            {
                 "char", new AeroTypeHandler
                 {
                     Size   = 1,
