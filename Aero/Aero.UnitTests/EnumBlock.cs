@@ -3,6 +3,7 @@ using Aero.Gen.Attributes;
 using NuGet.Frameworks;
 using NUnit.Framework;
 using System.Numerics;
+using static Aero.Gen.Attributes.AeroIfAttribute;
 
 namespace Aero.UnitTests
 {
@@ -27,6 +28,24 @@ namespace Aero.UnitTests
     }
 
 
+    [Aero]
+    public partial class EnumBlockArrayIfTest
+    {
+       [AeroArray(typeof(byte))]
+       public AaaaBlockWithEnumIf[] ArrayOfBlockWithEnumIf;
+    }
+
+    [AeroBlock]
+    public struct AaaaBlockWithEnumIf
+    {
+        public uint JustForShow;
+        public MyPrettyEnum Flags;
+
+        [AeroIf(nameof(Flags), Ops.HasFlag, MyPrettyEnum.Key)]
+        public uint WeHaveLost;
+    }
+
+
     public class EnumBlockSizeTests
     {
         public static EnumBlockArrayTest EnumBlockArrayTestRef = new EnumBlockArrayTest()
@@ -38,6 +57,18 @@ namespace Aero.UnitTests
                 },
             }
         };
+
+        public static EnumBlockArrayIfTest EnumBlockArrayIfTestRef = new EnumBlockArrayIfTest()
+        {
+            ArrayOfBlockWithEnumIf = new AaaaBlockWithEnumIf[] {
+                new AaaaBlockWithEnumIf {
+                    JustForShow = 1,
+                    Flags = (MyPrettyEnum) 0,
+                    WeHaveLost = 1337
+                },
+            }
+        };
+
 
         [SetUp]
         public void Setup()
@@ -68,6 +99,18 @@ namespace Aero.UnitTests
         public void ArrayOfBlockWithEnumGetPackedLength()
         {
             var packedSize = EnumBlockArrayTestRef.GetPackedSize();
+            if (packedSize == 6) {
+                Assert.Pass();
+            }
+            else {
+                Assert.Fail($"Expected packedSize 6 but got {packedSize}");
+            }
+        }
+
+        [Test]
+        public void ArrayOfBlockWithEnumIfGetPackedLength()
+        {
+            var packedSize = EnumBlockArrayIfTestRef.GetPackedSize();
             if (packedSize == 6) {
                 Assert.Pass();
             }
