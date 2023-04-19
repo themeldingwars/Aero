@@ -71,7 +71,7 @@ namespace Aero.Gen
         public bool   IsFlags;
 
         public override bool IsFixedSize() => true;
-        public override int  GetSize()     => Genv2.GetTypeSize(TypeStr);
+        public override int  GetSize() => Genv2.GetTypeSize(this.IsEnum ? EnumStr : TypeStr);
     }
 
     public class AeroArrayNode : AeroNode
