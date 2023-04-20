@@ -13,7 +13,7 @@ namespace Aero.UnitTests
         public void SimpleTypesGetPackedLength()
         {
             var packedSize = Tests.SimpleTypesRef.GetPackedSize();
-            if (packedSize == 42) {
+            if (packedSize == 43) {
                 Assert.Pass();
             }
             else {

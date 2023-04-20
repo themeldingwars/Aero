@@ -56,6 +56,14 @@ namespace Aero.Gen
                 }
             },
             {
+                "sbyte", new AeroTypeHandler
+                {
+                    Size   = 1,
+                    Reader = (name, typeCast) => $"{name} = {typeCast}(sbyte)data[offset];",
+                    Writer = (name, typeCast) => $"buffer[offset] = {typeCast}((byte){name});",
+                }
+            },
+            {
                 "char", new AeroTypeHandler
                 {
                     Size   = 1,
@@ -636,25 +644,32 @@ namespace Aero.Gen
                     AddLine($"offset += {length} + {stringNode.GetFullName()}.Length; // string");
                 }
             }
-            else if (node is AeroArrayNode arrayNode && arrayNode.Mode != AeroArrayNode.Modes.Fixed) {
-                var prefixLen = arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed
-                    ? GetTypeSize(arrayNode.PrefixTypeStr)
-                    : 0;
+            else if (node is AeroArrayNode arrayNode) {
+                // Do we know the size of the data in the array?
+                bool dataSizeKnown = (arrayNode.GetSize() != -1);
+                if (dataSizeKnown) {
+                    // Then we can one line
+                    var prefixLen = arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed
+                        ? GetTypeSize(arrayNode.PrefixTypeStr)
+                        : 0;
 
-                AddLine(
-                    $"offset += ({prefixLen}) + ({arrayNode.GetSize()} * {arrayNode.GetFullName()}.Length); // array non fixed {node.Name}");
-                node.Nodes.Clear();
+                    if (arrayNode.Mode == AeroArrayNode.Modes.Fixed) {
+                        // If the array always has a Fixed length, then we get the correct size directly from the array node
+                        AddLine(
+                        $"offset += ({prefixLen}) + ({arrayNode.GetSize()}); // array fixed {node.Name}");
+                    }
+                    else {
+                        // Otherwise we gotta multiply by length
+                        AddLine(
+                            $"offset += ({prefixLen}) + ({arrayNode.GetSize()} * {arrayNode.GetFullName()}.Length); // array non fixed {node.Name}");
+                    }
+                    node.Nodes.Clear();
+                }
+                else {
+                    // If we dont know the size, we handle this in PreNode
+                }
             }
-            else if (node is AeroArrayNode arrayNode2 && arrayNode2.IsFixedSize()) {
-                AddLine(
-                    $"offset += {arrayNode2.GetSize()}; // array fixed {node.Name}");
-                node.Nodes.Clear();
-            }
-            else if (node is AeroArrayNode arrayNode3) {
-                AddLine(
-                    $"offset += ({arrayNode3.GetSize()} * {arrayNode3.GetFullName()}.Length); // array non fixed {node.Name}");
-                node.Nodes.Clear();
-            }
+
             else if (node is AeroBlockNode && node.IsFixedSize()) {
                 AddLine($"offset += {node.GetSize()}; // Fixed size block");
                 node.Nodes.Clear();
@@ -668,10 +683,21 @@ namespace Aero.Gen
 
         private void GetPackedSizePreNode(AeroNode node)
         {
+            // For arrays where we dont know the size, create a loop
             if (node is AeroArrayNode arrayNode && arrayNode.GetSize() < 0) {
+                // Account for prefix length before the loop
+                if (arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed) {
+                    if (TypeHandlers.TryGetValue(arrayNode.PrefixTypeStr, out AeroTypeHandler handler)) {
+                        AddLine($"offset += {handler.Size};");
+                        AddLine();
+                    } else {
+                        AddLine(
+                            $"// Oh shit something went wrong and I couldn't read a type of {arrayNode.PrefixTypeStr} :<");
+                        AddLine();
+                    }
+                }
                 var idxName = $"idx{arrayNode.Depth}";
-                AddLine(
-                    $"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");
+                AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");
             }
         }
 

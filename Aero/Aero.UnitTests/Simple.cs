@@ -9,6 +9,7 @@ namespace Aero.UnitTests
     public partial class SimpleTypes
     {
         public byte       Byte;
+        public sbyte      SByte;
         public char       Char;
         public int        IntTest;
         public uint       UintTest;
@@ -91,7 +92,7 @@ namespace Aero.UnitTests
     {
         private static byte[] SimpleTypesBytes = new byte[]
         {
-            0x01, 0x41, 0x9C, 0xFF, 0xFF, 0xFF, 0x64, 0x00, 0x00, 0x00, 0xCE, 0xFF, 0x32, 0x00, 0xC0, 0xBD,
+            0x01, 0xFF, 0x41, 0x9C, 0xFF, 0xFF, 0xFF, 0x64, 0x00, 0x00, 0x00, 0xCE, 0xFF, 0x32, 0x00, 0xC0, 0xBD,
             0xF0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x9A, 0x99,
             0x99, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x40
         };
@@ -99,6 +100,7 @@ namespace Aero.UnitTests
         public static SimpleTypes SimpleTypesRef = new SimpleTypes()
         {
             Byte       = 1,
+            SByte      = -1,
             Char       = 'A',
             IntTest    = -100,
             UintTest   = 100,
@@ -135,6 +137,7 @@ namespace Aero.UnitTests
             var test = new SimpleTypes();
             if (test.Unpack(SimpleTypesBytes.AsSpan()) > -1) {
                 if (test.Byte                                     == SimpleTypesRef.Byte       &&
+                    test.SByte                                    == SimpleTypesRef.SByte      &&
                     test.Char                                     == SimpleTypesRef.Char       &&
                     test.IntTest                                  == SimpleTypesRef.IntTest    &&
                     test.UintTest                                 == SimpleTypesRef.UintTest   &&
