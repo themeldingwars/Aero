@@ -512,8 +512,6 @@ namespace Aero.Gen
             if (node?.Parent is AeroArrayNode arrayNode                       &&
                 arrayNode.Mode               == AeroArrayNode.Modes.ReadToEnd &&
                 arrayNode.Nodes.Last().Index == node.Index) {
-                var idxName = $"idx{arrayNode.Depth}";
-                AddLine($"{idxName}++;");
                 AddLine(
                     $"{arrayNode.Nodes.First().Name}Count++;"); // TODO: Move this to after the loop so its only one increment, awkward atm to know when we have just done a loops closing bracket
             }
@@ -568,6 +566,11 @@ namespace Aero.Gen
 
         private void CreateUnpackerPreNode(AeroNode node)
         {
+            if (node?.Parent is AeroArrayNode arrayNode2 && arrayNode2.Nodes.First().Index == node?.Index && arrayNode2.Mode == AeroArrayNode.Modes.ReadToEnd) {
+                var idxName = $"idx{arrayNode2.Depth}";
+                AddLine($"{idxName}++;");
+            }
+
             if (node is AeroBlockNode) {
                 LogDiagRead(node, iaAeroBlockDefine: true);
             }
@@ -895,7 +898,7 @@ namespace Aero.Gen
                 case AeroArrayNode.Modes.ReadToEnd:
                     if (createArray) {
                         AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{-arrayNode.Length}];");
-                        AddLine($"var {idxName} = 0;");
+                        AddLine($"var {idxName} = -1;");
                         LogDiagRead(arrayNode, isArrayDefine: true);
                         AddLine("while (offset < data.Length)");
                     }
