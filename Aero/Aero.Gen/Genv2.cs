@@ -485,10 +485,18 @@ namespace Aero.Gen
 
         private int CreateUnpackerOnNode(bool isView, AeroNode node, ref int nullableIdx)
         {
-            if (isView && node.IsNullable) {
-                AddLine($"if ({GenerateViewFieldIdx(nullableIdx++)}) //{{");
-                if (node is not AeroBlockNode) AddLine("{");
-                Indent();
+            if (node.IsNullable) {
+                if (isView) {
+                    AddLine($"if ({GenerateViewFieldIdx(nullableIdx++)}) //{{");
+                    if (node is not AeroBlockNode) AddLine("{");
+                    Indent();
+                }
+                else {
+                    var byteIdx = Math.Floor((double)nullableIdx / 8) + 1;
+                    var bitIdx = nullableIdx % 8;
+                    AddLine($"{NULLABLE_FIELD_BASE_NAME}_{byteIdx} = (byte)({NULLABLE_FIELD_BASE_NAME}_{byteIdx} & ~(1 << {bitIdx}));");
+                    nullableIdx++;
+                }
             }
 
             if (Config.DiagLogging && node is not AeroArrayNode && node is not AeroIfNode) {

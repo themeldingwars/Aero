@@ -320,6 +320,61 @@ namespace Aero.UnitTests
         }
 
         [Test]
+        public void SimpleViewUnpackChangesWithNullableNotNullTest()
+        {
+            var test = new SimpleViewWithNullable
+            {
+                TestValue = 1,
+                TestValueNullableProp = 3
+            };
+
+            test.ClearViewChanges();
+
+            var bytes = new byte[]
+            {
+                0x01,
+                0x00, 0x00, 0x00, 0x40,
+                131
+            };
+            var lenUnpacked = test.UnpackChanges(bytes);
+
+            if (lenUnpacked == bytes.Length
+                && test.TestValue == 1
+                && test.TestVlaue2 == 2.0f
+                && test.TestValueNullableProp == null) {
+                Assert.Pass();
+            }
+
+            Assert.Fail();
+        }
+
+        [Test]
+        public void SimpleViewUnpackChangesWithNullableNullTest()
+        {
+            var test = new SimpleViewWithNullable
+            {
+                TestValue = 2
+            };
+
+            var bytes = new byte[]
+            {
+                0x00,
+                0x01, 0x00, 0x00, 0x00,
+                0x03,
+                0x02, 0x00, 0x00, 0x00
+            };
+            var lenUnpacked = test.UnpackChanges(bytes);
+
+            if (lenUnpacked == bytes.Length
+                && test.TestValue == 1
+                && test.TestValueNullableProp == 2) {
+                Assert.Pass();
+            }
+
+            Assert.Fail();
+        }
+
+        [Test]
         public void SimpleViewGetPackedChangesSizeTest()
         {
             var test = new SimpleView();
