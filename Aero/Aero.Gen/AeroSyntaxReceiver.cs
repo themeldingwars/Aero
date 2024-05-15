@@ -13,9 +13,10 @@ namespace Aero.Gen
         public GeneratorExecutionContext    Context;
         public List<ClassDeclarationSyntax> ClassesToAugment { get; private set; } = new();
         
-        public List<ClassDeclarationSyntax>                AeroClasses     { get; private set; } = new();
-        public Dictionary<string, StructDeclarationSyntax> AeroBlockLookup { get; private set; } = new();
-        public Dictionary<string, AeroMessageIdAttribute>  AeroMessageIds  { get; private set; } = new();
+        public List<ClassDeclarationSyntax>                AeroClasses          { get; private set; } = new();
+        public List<ClassDeclarationSyntax>                AeroEncounterClasses { get; private set; } = new();
+        public Dictionary<string, StructDeclarationSyntax> AeroBlockLookup      { get; private set; } = new();
+        public Dictionary<string, AeroMessageIdAttribute>  AeroMessageIds       { get; private set; } = new();
 
         public static bool HasAttribute(ClassDeclarationSyntax cds, string attributeName) => cds.AttributeLists.Any(x => x.Attributes.Any(y => (y.Name is IdentifierNameSyntax ins && ins.Identifier.Text == attributeName) ||
                                                                                                                                                (y.Name is QualifiedNameSyntax qns && qns.ToString() == attributeName)));
@@ -43,6 +44,11 @@ namespace Aero.Gen
                             AeroMessageIds.Add(asString, aeroMsgInfo);
                         }
                     }
+                }
+
+                if (HasAttribute(cds, "AeroEncounter"))
+                {
+                    AeroEncounterClasses.Add(cds);
                 }
             }
             
