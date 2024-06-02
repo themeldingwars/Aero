@@ -70,6 +70,20 @@ namespace Aero.Gen
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
+        public static readonly DiagnosticDescriptor InvalidTypeInEncounterView = new DiagnosticDescriptor(id: "Aero7",
+            title: "Invalid type in encounter view",
+            messageFormat: "Field '{0}' uses invalid type '{1}', use byte/bool/ushort/uint/float/ulong/Timer/EntityId or fixed size array of any of these types",
+            category: "Aero.Gen",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor InvalidArrayModeInEncounterView = new DiagnosticDescriptor(id: "Aero8",
+            title: "Invalid array mode in encounter view",
+            messageFormat: "Field '{0}' uses array mode '{1}', but only fixed size arrays are supported in encounter views",
+            category: "Aero.Gen",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
     #endregion
 
         public static FieldDeclarationSyntax LastCheckedField;
@@ -111,6 +125,9 @@ namespace Aero.Gen
                     var routing = CreateRouting(snRecv, config);
                     Debug.WriteLine(routing);
                     context.AddSource("AeroRouting.cs", SourceText.From(routing, Encoding.UTF8));
+
+                    var encounters = CreateEncounters(snRecv);
+                    context.AddSource("AeroEncounters.cs", SourceText.From(encounters, Encoding.UTF8));
                 }
             }
             catch (Exception e) {
@@ -241,6 +258,47 @@ namespace Aero.Gen
                         return sb.ToString();
                     }
                 }
+            }
+        }
+
+        private string CreateEncounters(AeroSyntaxReceiver snRecv)
+        {
+            var sb = new StringBuilder();
+
+            AddLine(sb, "using System;");
+            AddLine(sb, "using Aero.Gen;");
+
+            AddLine(sb, $"public static class AeroEncounters");
+            AddLine(sb, "{");
+
+            Indent();
+            {
+                AddLine(sb, "public static IAeroEncounter GetEncounterClass(string encounterType)");
+                AddLineAndIndent(sb, "{");
+                {
+                    AddLineAndIndent(sb, "IAeroEncounter encounter = encounterType switch {");
+                    {
+                        foreach (var encounter in snRecv.AeroEncounterClasses)
+                        {
+                            var attr = AgUtils.NodeWithName<AttributeSyntax>(encounter, AeroEncounterAttribute.Name);
+
+                            var type = attr.ArgumentList.Arguments[0].Expression.ToString();
+
+                            AddLine(sb, $"{type} => new {encounter.GetFullName()}(),");
+                        }
+
+                        AddLine(sb, "_ => null,");
+                    }
+
+                    UnIndentAndAddLine(sb, "};");
+                    AddLine(sb, "");
+                    AddLine(sb, "return encounter;");
+                }
+
+                UnIndentAndAddLine(sb, "}");
+                UnIndentAndAddLine(sb, "}");
+
+                return sb.ToString();
             }
         }
     }

@@ -274,6 +274,13 @@ namespace Aero.Gen
             return false;
         }
 
+        public static bool IsEncounterClass(ClassDeclarationSyntax cd, SemanticModel sm)
+        {
+            var aeroAttr = NodeWithName<AttributeSyntax>(cd, AeroEncounterAttribute.Name);
+
+            return aeroAttr != null;
+        }
+
         /*{
             return NodeWithName<AttributeSyntax>(fd, name);
                 fd.DescendantNodes().OfType<AttributeSyntax>()

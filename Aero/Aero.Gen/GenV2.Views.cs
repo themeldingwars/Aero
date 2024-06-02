@@ -166,6 +166,7 @@ namespace Aero.Gen
                 AddLine();
 
                 var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                var isEncounterClass = AgUtils.IsEncounterClass(cd, sm);
 
                 using (DoWhile("offset < data.Length")) {
                     AddLine("var id = data[offset++];");
@@ -187,7 +188,7 @@ namespace Aero.Gen
                                 using (Block($"case {shadowFieldIdx}: // {node.GetFullName()}")) {
                                     CreateLogicFlow(node,
                                         CreateUnpackerPreNode,
-                                        node => { CreateUnpackerOnNode(false, node, ref nullableIdx); });
+                                        node => { CreateUnpackerOnNode(false, node, ref nullableIdx, isEncounterClass); });
                                     AddLine("break;");
                                 }
 
@@ -222,6 +223,7 @@ namespace Aero.Gen
                 AddLine("int offset = 0;");
                 AddLine();
                 var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                var isEncounterClass = AgUtils.IsEncounterClass(cd, sm);
                 var fieldIdx = 0;
                 AeroSourceGraphGen.WalkTree(rootNode, node =>
                 {
@@ -230,7 +232,7 @@ namespace Aero.Gen
                         using (If($"{GenerateViewFieldIdx(fieldIdx, DIRTY_FIELD_BASE_NAME)}")) {
                             if (node.IsNullable) {
                                 using (If($"{node.GetFullName()}Prop.HasValue")) { // TODO: change to use nullable bits
-                                    CreatePacker(fieldIdx, node, true);
+                                    CreatePacker(fieldIdx, node, isEncounterClass);
                                 }
 
                                 using (Else()) {
@@ -238,7 +240,7 @@ namespace Aero.Gen
                                 }
                             }
                             else {
-                                CreatePacker(fieldIdx, node, false);
+                                CreatePacker(fieldIdx, node, isEncounterClass);
                             }
                         }
 
@@ -253,12 +255,22 @@ namespace Aero.Gen
                 AddLine($"return offset;");
             }
 
-            void CreatePacker(int fieldIdx, AeroNode node, bool noNullableCheck)
+            void CreatePacker(int fieldIdx, AeroNode node, bool isEncounter)
             {
-                AddLine($"buffer[offset++] = {fieldIdx};");
-                CreateLogicFlow(node,
-                    (node) => CreatePackerPreNode(node),
-                    (node) => CreatePackerOnNode(node, false));
+                // For arrays in encounters we add idx inside the for loop in PackerOnNode
+                if (isEncounter && node is AeroArrayNode)
+                {
+                    CreateLogicFlow(node,
+                        (node) => CreatePackerPreNode(node),
+                        (node) => CreatePackerOnNode(node, false, true, fieldIdx));
+                }
+                else
+                {
+                    AddLine($"buffer[offset++] = {fieldIdx};");
+                    CreateLogicFlow(node,
+                        (node) => CreatePackerPreNode(node),
+                        (node) => CreatePackerOnNode(node, false));
+                }
             }
         }
 
@@ -269,6 +281,7 @@ namespace Aero.Gen
                 AddLine("int offset = 0;");
                 AddLine();
                 var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                var isEncounter = AgUtils.IsEncounterClass(cd, SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree));
                 var fieldIdx = 0;
                 AeroSourceGraphGen.WalkTree(rootNode, node =>
                 {
@@ -278,7 +291,7 @@ namespace Aero.Gen
                             AddLine("offset++;");
                             CreateLogicFlow(node,
                                 preNode: GetPackedSizePreNode,
-                                onNode: node => { GetPackedSizeOnNode(true, node); });
+                                onNode: node => { GetPackedSizeOnNode(true, node, isEncounter); });
                         }
 
                         fieldIdx++;
