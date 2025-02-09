@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Text;
-using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -974,7 +972,7 @@ namespace Aero.Gen
             }
         }
 
-        // Boiler plate code for creating the logic flow
+        // Boilerplate code for creating the logic flow
         private void CreateLogicFlow(AeroNode         rootNode,      Action<AeroNode> preNode  = null,
                                      Action<AeroNode> onNode = null, Action<AeroNode> postNode = null)
         {

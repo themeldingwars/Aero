@@ -156,7 +156,7 @@ namespace Aero.UnitTests
         }
 
         [Test]
-        public void UntillEndOfSliceString()
+        public void UntilEndOfSliceString()
         {
             ReadOnlySpan<byte> data = new byte[] {0x74, 0x65, 0x73, 0x74, 0x79, 0x61, 0x79, 0x3A, 0x3E};
             var                test = new StringTest5();
@@ -174,7 +174,7 @@ namespace Aero.UnitTests
         }
         
         [Test]
-        public void ArrayOf4FIxedStrings()
+        public void ArrayOf4FixedStrings()
         {
             ReadOnlySpan<byte> data = new byte[]
             {

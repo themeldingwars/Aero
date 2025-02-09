@@ -12,7 +12,7 @@ namespace Aero.Gen
 
         private void GenerateViewClassMembers(ClassDeclarationSyntax cd, SemanticModel sm)
         {
-            AddLine("// View data for bit feilds should go here");
+            AddLine("// View data for bit fields should go here");
 
             var rootNode          = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
             var fieldIdx          = 0;

@@ -1,5 +1,4 @@
 ﻿using BenchmarkDotNet.Running;
-using NUnit.Framework;
 
 namespace Aero.UnitTests.Benchmarks
 {
@@ -9,6 +8,5 @@ namespace Aero.UnitTests.Benchmarks
         {
             var summary = BenchmarkRunner.Run<Reading>();
         }
-        
     }
 }

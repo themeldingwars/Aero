@@ -1,7 +1,6 @@
 using System;
 using Aero.Gen.Attributes;
 using NUnit.Framework;
-using System.Numerics;
 using static Aero.Gen.Attributes.AeroIfAttribute;
 
 namespace Aero.UnitTests
@@ -26,7 +25,6 @@ namespace Aero.UnitTests
         Key    = 1 << 1,
     }
 
-
     [Aero]
     public partial class EnumBlockArrayIfTest
     {
@@ -43,7 +41,6 @@ namespace Aero.UnitTests
         [AeroIf(nameof(Flags), Ops.HasFlag, MyPrettyEnum.Key)]
         public uint WeHaveLost;
     }
-
 
     public class EnumBlockSizeTests
     {
@@ -67,7 +64,6 @@ namespace Aero.UnitTests
                 },
             }
         };
-
 
         [SetUp]
         public void Setup()

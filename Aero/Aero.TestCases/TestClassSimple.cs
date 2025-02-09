@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.Numerics;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Text;
 using Aero.Gen;
 using Aero.Gen.Attributes;
 using static Aero.Gen.Attributes.AeroIfAttribute;
@@ -20,7 +16,6 @@ namespace Aero.TestCases
         Flag3,
         Flag4
     }
-
 
     [AeroBlock]
     public struct TestSubDataOne

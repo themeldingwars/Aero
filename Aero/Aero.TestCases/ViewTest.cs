@@ -1,11 +1,6 @@
 ﻿using System.Numerics;
 using Aero.Gen;
 using Aero.Gen.Attributes;
-using Aero.Gen.Attributes;
-using static Aero.Gen.Attributes.AeroIfAttribute;
-using static Aero.Gen.Attributes.AeroMessageIdAttribute;
-using System.Numerics;
-using System;
 
 namespace Aero.TestCases
 {
@@ -54,7 +49,6 @@ namespace Aero.TestCases
         [AeroArray(8)]
         public byte[] Unk;
     }
-    
 
     [Aero(AeroGenTypes.View)]
     public partial class Outpost_ObserverView

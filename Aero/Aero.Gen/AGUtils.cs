@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using Aero.Gen;
 using Aero.Gen.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -107,7 +105,6 @@ namespace Aero.Gen
                                                   .First().Identifier.Text == name).Select(x => (T) x);
 
         public static bool HasNodeWithName<T>(SyntaxNode root, string name) where T : SyntaxNode => NodesWithName<T>(root, name).FirstOrDefault() != default;
-
 
         public static AttributeSyntax GetAttributeByName(FieldDeclarationSyntax fd, string name) => NodeWithName<AttributeSyntax>(fd, name);
 

@@ -19,8 +19,8 @@ namespace Aero.Gen
         public int            Index      = 0;
         public bool           IsNullable = false;
 
-        // Get the full name of this node in the list, eg test.test2.int;
-        public string GetFullName(bool ingoreLastArray = false)
+        // Get the full name of this node in the list, e.g. test.test2.int;
+        public string GetFullName(bool ignoreLastArray = false)
         {
             var names = new List<string>(4);
             ClimbUp(this, true);
@@ -44,7 +44,7 @@ namespace Aero.Gen
                         return;
                     }
                     else if (node.Name != null) {
-                        if ((!ingoreLastArray && isFirstNode) && node?.Parent is AeroArrayNode arrayNode2) {
+                        if ((!ignoreLastArray && isFirstNode) && node?.Parent is AeroArrayNode arrayNode2) {
                             names.Add($"{node.Name}[idx{arrayNode2.Depth}]");
                         }
                         else {

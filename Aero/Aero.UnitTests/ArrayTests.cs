@@ -202,7 +202,6 @@ namespace Aero.UnitTests
         }
         
         private static byte[] ByteArrayFixedTestBytes = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 ,9 };
-
         
         [Test]
         public void ByteArrayFixedTest()

@@ -3,9 +3,7 @@ using System.IO;
 using System.Numerics;
 using Aero.Gen.Attributes;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
-using BenchmarkDotNet.Toolchains.InProcess.Emit;
 
 namespace Aero.UnitTests.Benchmarks
 {

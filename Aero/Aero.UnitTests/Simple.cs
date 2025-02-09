@@ -87,7 +87,6 @@ namespace Aero.UnitTests
         public Quaternion Quat;
     }
     
-
     public class Tests
     {
         private static byte[] SimpleTypesBytes = new byte[]

@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Aero.Gen;
-using Aero.Gen.Attributes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -24,7 +21,6 @@ using Aero.Gen;
 
 namespace Aero.TestCases
 {
-
     [Flags]
     public enum TestFlags : byte
     {
@@ -87,77 +83,77 @@ namespace Aero.TestCases
         public byte[] Arr;
     }
 
-public class Test2
-{
-    [Aero]
-    public partial class TestCase1
+    public class Test2
     {
-
-        public ArrayInStruct ArrayInStructTest;
-
-        [AeroArray(-4)]
-        public TestSubDataOne[] ArrayTestTest;
-
-        [AeroArray(4)]
-        [AeroString(9)] public string[] TestString;
-
-        [AeroArray(2)]
-        public Vector2[] Vector2Test;
-
-        public Vector2 Vec2;
-
-        public TestSubDataTwo IntArray4;
-
-        [AeroArray(typeof(int))]
-        public TestSubDataTwo[] IntArray4;
-
-        public TestFlags Flags;
-
-        public byte   Byte;
-        public char   Char;
-        public int    IntTest;
-        public uint   UintTest;
-        public short  ShortTest;
-        public ushort UshortTest;
-        public long   Long;
-        public ulong  ULong;
-        public float  Float;
-        
-        [AeroIf(""IntTest"", -100)]
-        public double Double;
-        
-        [AeroIf(nameof(IntTest), 100)]
-        [AeroIf(nameof(IntTest), 200)]
-        [AeroArray(nameof(Byte))]
-        public int[] IntArray;
-
-        [AeroIf(nameof(Byte), AeroIfAttribute.Ops.NotEqual, 0.5f, 1.0f)]
-        [AeroArray(2)]
-        public int[] IntArray2;
-
-        //[AeroArray(typeof(int))]
-        //public int[] IntArray3;
-
-        public TestSubDataOne SubDataOne;
-        public TestSubDataTwo SubData2;
-
-        [AeroString(20)]
-        public string TestString;
-        
-        [AeroString(nameof(Byte))]
-        public string TestString2;
-        
-        [AeroString(typeof(int))]
-        public string TestString3;
-
-        public TestCase1()
+        [Aero]
+        public partial class TestCase1
         {
+    
+            public ArrayInStruct ArrayInStructTest;
+    
+            [AeroArray(-4)]
+            public TestSubDataOne[] ArrayTestTest;
+    
+            [AeroArray(4)]
+            [AeroString(9)] public string[] TestString;
+    
+            [AeroArray(2)]
+            public Vector2[] Vector2Test;
+    
+            public Vector2 Vec2;
+    
+            public TestSubDataTwo IntArray4;
+    
+            [AeroArray(typeof(int))]
+            public TestSubDataTwo[] IntArray4;
+    
+            public TestFlags Flags;
+    
+            public byte   Byte;
+            public char   Char;
+            public int    IntTest;
+            public uint   UintTest;
+            public short  ShortTest;
+            public ushort UshortTest;
+            public long   Long;
+            public ulong  ULong;
+            public float  Float;
             
+            [AeroIf(""IntTest"", -100)]
+            public double Double;
+            
+            [AeroIf(nameof(IntTest), 100)]
+            [AeroIf(nameof(IntTest), 200)]
+            [AeroArray(nameof(Byte))]
+            public int[] IntArray;
+    
+            [AeroIf(nameof(Byte), AeroIfAttribute.Ops.NotEqual, 0.5f, 1.0f)]
+            [AeroArray(2)]
+            public int[] IntArray2;
+    
+            //[AeroArray(typeof(int))]
+            //public int[] IntArray3;
+    
+            public TestSubDataOne SubDataOne;
+            public TestSubDataTwo SubData2;
+    
+            [AeroString(20)]
+            public string TestString;
+            
+            [AeroString(nameof(Byte))]
+            public string TestString2;
+            
+            [AeroString(typeof(int))]
+            public string TestString3;
+    
+            public TestCase1()
+            {
+                
+            }
         }
     }
-}
 
-[Aero]
+    [Aero]
     [AeroMessageId(MsgType.Control, MsgSrc.Both, 1)]
     public partial class ControlMsgBothTest1
     {
@@ -331,7 +327,6 @@ public class Test2
             }*/
 
             //var msgHander1 = AeroRouting.GetNewMessageHandler(AeroMessageIdAttribute.MsgType.Matrix, AeroMessageIdAttribute.MsgSrc.Command, 2);
-
         }
         
         private static Compilation CreateCompilation(string source)
