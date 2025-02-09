@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
 
         <IsPackable>false</IsPackable>
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
         <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)GeneratedFiles</CompilerGeneratedFilesOutputPath>
-        <LangVersion>9</LangVersion>
+        <LangVersion>12</LangVersion>
 
         <StartupObject>Aero.UnitTests.Benchmarks.Runner</StartupObject>
     </PropertyGroup>
@@ -16,14 +16,12 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
-        <PackageReference Include="NUnit" Version="3.12.0" />
-        <PackageReference Include="NUnit3TestAdapter" Version="3.16.1" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
-
-        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="3.8.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.8.0" />
-        <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="3.8.0">
+        <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+        <PackageReference Include="NUnit" Version="4.3.2" />
+        <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+        <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="4.12.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; buildtransitive</IncludeAssets>
         </PackageReference>
