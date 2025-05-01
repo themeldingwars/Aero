@@ -160,14 +160,19 @@ namespace Aero.Gen
         {
             AddLine("// Unpack the changes in the span and apply them to the class");
             using (Function("public int UnpackChanges(ReadOnlySpan<byte> data)")) {
+                var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                if (rootNode.Nodes.Count == 0)
+                {
+                    AddLine("return 0;");
+                    return;
+                }
+
+                var isEncounterClass = AgUtils.IsEncounterClass(cd, sm);
+
                 AddLine("int offset = 0;");
                 AddLine("int offsetBefore = 0;");
                 if (Config.DiagLogging) AddLine("ReadLogs.Clear();");
                 AddLine();
-
-                var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
-                var isEncounterClass = AgUtils.IsEncounterClass(cd, sm);
-
                 using (DoWhile("offset < data.Length")) {
                     AddLine("var id = data[offset++];");
 
@@ -220,11 +225,17 @@ namespace Aero.Gen
             AddLine("// Pack the changes in the span");
             AddLine("// Changes are marked as dirty when set with their property");
             using (Function("public int PackChanges(Span<byte> buffer, bool clearDirtyAfterSend = true)")) {
-                AddLine("int offset = 0;");
-                AddLine();
                 var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+                if (rootNode.Nodes.Count == 0)
+                {
+                    AddLine("return 0;");
+                    return;
+                }
+
                 var isEncounterClass = AgUtils.IsEncounterClass(cd, sm);
                 var fieldIdx = 0;
+                AddLine("int offset = 0;");
+                AddLine();
                 AeroSourceGraphGen.WalkTree(rootNode, node =>
                 {
                     if (node.Depth == 0) {
