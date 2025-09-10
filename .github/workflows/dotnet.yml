@@ -16,9 +16,9 @@ jobs:
         working-directory: ./Aero
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Setup .NET
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
     - name: Restore dependencies
@@ -44,7 +44,7 @@ jobs:
         body="${body//$'\r'/'%0D'}" 
         echo ::set-output name=body::$body
     - name: Commit Comment
-      uses: peter-evans/commit-comment@v1.3.2
+      uses: peter-evans/commit-comment@v3
       with:
           body: |
             Benchmark result (use as a guide):
@@ -56,7 +56,7 @@ jobs:
         path: ./cache
         key: ${{ runner.os }}-benchmark
     - name: Store benchmark result
-      uses: Happypig375/github-action-benchmark@v1.8.2
+      uses: benchmark-action/github-action-benchmark@v1
       if: github.event_name != 'pull_request'
       with:
         name: Benchmark.Net Benchmark
