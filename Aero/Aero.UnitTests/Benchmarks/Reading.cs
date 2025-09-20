@@ -73,7 +73,7 @@ namespace Aero.UnitTests.Benchmarks
     }
 
     //[SimpleJob(RuntimeMoniker.NetCoreApp30)]
-    [SimpleJob(RuntimeMoniker.NetCoreApp50, launchCount: 1, warmupCount: 5, targetCount: 10)]
+    [SimpleJob(RuntimeMoniker.Net80, launchCount: 1, warmupCount: 5, iterationCount: 10)]
     [MemoryDiagnoser]
     [JsonExporterAttribute.Full]
     [JsonExporterAttribute.FullCompressed]
