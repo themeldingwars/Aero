@@ -214,8 +214,8 @@ namespace Aero.Gen
                     Reader = (name, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
                                                  $"{name}.Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4));",
                     Writer = (name, typeCast) =>
-                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), in {name}.X);" +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), in {name}.Y);"
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);" +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);"
                 }
             },
             {
@@ -226,9 +226,9 @@ namespace Aero.Gen
                                                  $"{name}.Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4));" +
                                                  $"{name}.Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4));",
                     Writer = (name, typeCast) =>
-                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), in {name}.X);"     +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), in {name}.Y);" +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), in {name}.Z);"
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);"     +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);" +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);"
                 }
             },
             {
@@ -240,10 +240,10 @@ namespace Aero.Gen
                                                  $"{name}.Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4));" +
                                                  $"{name}.W = MemoryMarshal.Read<float>(data.Slice(offset + 12, 4));",
                     Writer = (name, typeCast) =>
-                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), in {name}.X);"     +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), in {name}.Y);" +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), in {name}.Z);" +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 12, sizeof(float)), in {name}.W);"
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);"     +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);" +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);" +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 12, sizeof(float)), ref {name}.W);"
                 }
             },
             {
