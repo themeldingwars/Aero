@@ -6,7 +6,6 @@
         <IsPackable>false</IsPackable>
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
         <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)GeneratedFiles</CompilerGeneratedFilesOutputPath>
-        <LangVersion>9</LangVersion>
 
         <StartupObject>Aero.UnitTests.Benchmarks.Runner</StartupObject>
     </PropertyGroup>

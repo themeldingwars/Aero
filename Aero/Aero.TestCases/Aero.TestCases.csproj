@@ -6,7 +6,6 @@
 
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
         <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)GeneratedFiles</CompilerGeneratedFilesOutputPath>
-        <LangVersion>preview</LangVersion>
 
         <Aero_BoundsCheck>True</Aero_BoundsCheck>
 
