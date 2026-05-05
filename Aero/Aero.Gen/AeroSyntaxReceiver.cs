@@ -20,7 +20,8 @@ namespace Aero.Gen
 
         public static bool HasAttribute(ClassDeclarationSyntax cds, string attributeName) => cds.AttributeLists.Any(x => x.Attributes.Any(y => (y.Name is IdentifierNameSyntax ins && ins.Identifier.Text == attributeName) ||
                                                                                                                                                (y.Name is QualifiedNameSyntax qns && qns.ToString() == attributeName)));
-        public static bool HasAttribute(TypeDeclarationSyntax  cds, string attributeName) => cds.AttributeLists.Any(x => x.Attributes.Any(y => ((IdentifierNameSyntax)y.Name).Identifier.Text == attributeName));
+        public static bool HasAttribute(TypeDeclarationSyntax  cds, string attributeName) => cds.AttributeLists.Any(x => x.Attributes.Any(y => (y.Name is IdentifierNameSyntax ins && ins.Identifier.Text == attributeName) ||
+                                                                                                                                               (y.Name is QualifiedNameSyntax qns && qns.ToString() == attributeName)));
 
         // Get all classes with the Aero attribute
         public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
