@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  id-token: write
+  contents: write
+
 jobs:
   build:
 
@@ -16,9 +20,11 @@ jobs:
         working-directory: ./Aero
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 8.0.x
     - name: Restore dependencies
@@ -27,13 +33,20 @@ jobs:
       run: dotnet build --no-restore -c Release
     - name: Test
       run: dotnet test --no-build --verbosity normal -c Release
-    - name: Publish nuget
-      uses: rohith/publish-nuget@v2
+
+    - name: NuGet Login
       if: github.event_name != 'pull_request'
-      with: 
-        PROJECT_FILE_PATH: Aero/Aero.Gen/Aero.Gen.csproj
-        PACKAGE_NAME: Aero.Gen
-        NUGET_KEY: ${{secrets.TMW_NUGET}}
+      uses: NuGet/login@v1
+      id: login
+      with:
+        user: TMW
+    - name: Publish FauFau NuGet
+      if: github.event_name != 'pull_request'
+      env:
+        NUGET_DIRECTORY: Aero/Aero.Gen/bin/Release
+        NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+      run: dotnet nuget push $NUGET_DIRECTORY/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
     - name: Run benchmarks
       run: cd Aero.UnitTests && dotnet run -c Release
     - id: get-comment-body
@@ -44,14 +57,14 @@ jobs:
         body="${body//$'\r'/'%0D'}" 
         echo ::set-output name=body::$body
     - name: Commit Comment
-      uses: peter-evans/commit-comment@v3
+      uses: peter-evans/commit-comment@v4
       with:
           body: |
             Benchmark result (use as a guide):
             ${{ steps.get-comment-body.outputs.body }}
-            
+
     - name: Download previous benchmark data
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ./cache
         key: ${{ runner.os }}-benchmark
