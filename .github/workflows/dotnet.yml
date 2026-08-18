@@ -43,7 +43,7 @@ jobs:
     - name: Publish FauFau NuGet
       if: github.event_name != 'pull_request'
       env:
-        NUGET_DIRECTORY: Aero/Aero.Gen/bin/Release
+        NUGET_DIRECTORY: Aero.Gen/bin/Release
         NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
       run: dotnet nuget push $NUGET_DIRECTORY/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
