@@ -122,6 +122,69 @@ Strings should be marked with this attribute to be parsed correctly.
 ## ``[AeroSdb]``
 * ``[AeroSdb("Table Name", "Column Name")]``: Mark a field as having a value from the sdb table and column given.
 
+## ``[AeroMessageId]``
+Marks a class as a routable message. When any class in the project uses this attribute, the generator also emits an `AeroRouting` helper.
+
+* Control messages use a plain numeric id:
+  * ``[AeroMessageId(MsgType.Control, MsgSrc.Message, 5)]``
+* Matrix and GSS messages use the generated protocol enums and optional version ranges:
+  ```csharp
+  using Aero.Gen.Attributes;
+  using Aero.Protocol;
+  using static Aero.Gen.Attributes.AeroMessageIdAttribute;
+
+  [Aero]
+  [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.Login)]
+  public partial class MyMatrixLogin { }
+
+  [Aero]
+  [AeroMessageId(MsgType.GSS, MsgSrc.Command, GssCharacterCommand.RequestLogout)]
+  public partial class MyCharacterLogout { }
+
+  [Aero]
+  [AeroMessageId(MsgType.GSS, MsgSrc.Message, GssCharacterMessage.CharacterLoaded, GssVersion.V11, GssVersion.V67)]
+  public partial class MyCharacterLoaded { }
+
+  // A message sent through a view: the wire typecode is the view route's id, not the namespace's.
+  [Aero]
+  [AeroMessageId(MsgType.GSS, MsgSrc.Message, GssCharacterMessage.Killed, GssCharacterView.CombatView)]
+  public partial class MyKilled { }
+
+  [Aero(AeroGenTypes.View)]
+  [AeroMessageId(MsgType.GSS, MsgSrc.Message, GssCharacterView.ObserverView)]
+  public partial class MyCharacterObserverView { }
+  ```
+* GSS messages/commands can specify the view they are sent through with the version-agnostic `Gss*View` enum. Without a view the message is registered for the plain namespace route; with a view it is only dispatched on (and sent with) that view's route typecode. The view must exist in every version of the range, otherwise it's a generator error.
+* Version ranges are optional. Omitted `from` is the first known protocol version, omitted `to` is the last known protocol version.
+* `MatrixVersion`/`GssVersion` are ordered chronologically (V1 is the oldest). The raw protocol numbers are opaque, so the ordering is derived from the earliest client build (Patches dumps) that used each version; `ProtocolVersions.MatrixRaw`/`GssRaw` map the enum to raw numbers and `ProtocolVersions.MatrixFirstBuild`/`GssFirstBuild` show each version's first build time.
+* `MsgSrc.Command` maps to GSS `Commands`, `MsgSrc.Message` maps to GSS `Messages`, and `MsgSrc.Both` registers the class for both where valid.
+* Matrix uses one shared `MatrixMessage` id space; `MsgSrc` is dispatch/registration metadata only and does not change the Matrix wire id.
+* Root `GssMessage` entries are message-only; GSS command enums must be used with `MsgSrc.Command`.
+* `Gss*View` enums mark view classes for routing by their view/controller `typecode` (views are server -> client, so `MsgSrc.Command` is not allowed).
+* Duplicate message ids or overlapping version ranges for the same protocol source are generator errors.
+
+### Protocol lookup
+The generated protocol tables expose wire-id lookup helpers. GSS lookup uses `typecode` in the public API:
+
+```csharp
+using Aero.Protocol;
+
+GssTables.TryGetWireIds(GssVersion.V15, GssCharacterMessage.CharacterLoaded, out byte typecode, out byte messageId);
+GssTables.TryGetWireIds(GssVersion.V15, GssCharacterCommand.ActivateAbility, out byte typecode, out byte messageId);
+GssTables.TryGetWireIds(GssVersion.V15, GssCharacterView.ObserverView, out byte typecode, out byte messageId);
+
+// A message sent through a view: typecode is the view route's id.
+GssTables.TryGetWireIds(GssVersion.V15, GssCharacterView.CombatView, GssCharacterMessage.Killed, out byte typecode, out byte messageId);
+
+MatrixTables.TryGetMessageId(MatrixVersion.V1, MatrixMessage.Login, out byte messageId);
+```
+
+* For GSS messages and commands, `typecode` is the namespace typecode and `messageId` is the message/command wire id.
+* For GSS messages/commands sent through a view, use the `(view, message)` overload; `typecode` is then the view route's typecode.
+* For GSS views, `typecode` is the view/controller typecode and `messageId` is `0`.
+* Matrix lookup does not expose a typecode because Matrix has a single message id space.
+* `TryGet...` returns `false` when the protocol enum is unknown, the value is absent in that version, or the GSS namespace is not routed in that version.
+
 # Examples
 Here are some exampls, for more you can see the unit tests in the project.
 
@@ -224,8 +287,47 @@ This is why feilds should be defined as private to ensure only the propetys can 
 These views shouldn't be shared or polled for this reason.
 
 
+# Message routing
+If any class in the project has ``[AeroMessageId]`` the generator emits a public static class ``AeroRouting``.
+
+Set the current protocol versions before resolving wire ids:
+```csharp
+AeroRouting.CurrentMatrixVersion = MatrixVersion.V1;
+AeroRouting.CurrentGssVersion = GssVersion.V1;
+```
+
+Resolve a message instance from wire data:
+```csharp
+IAero msg = AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 12, 3);
+```
+
+`routeId` is only meaningful for GSS and is the namespace route id. Matrix uses `0`.
+Direct enum overloads are also generated for registered protocol enums:
+```csharp
+IAero msg = AeroRouting.GetNewMessageHandler(GssVersion.V6, MsgSrc.Message, GssCharacterMessage.CharacterLoaded);
+```
+
+View routes use the same entry point: when the `typecode` is a view/controller route id, the router returns the view class registered for it (the `messageId` is not used for selection - the consumer interprets it in the view's context). The `typecode` -> view mapping for a protocol version comes from the generated `GssTables`:
+```csharp
+IAero view = AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 7, viewTypecode);
+// or by enum:
+IAero view = AeroRouting.GetNewMessageHandler(GssVersion.V6, MsgSrc.Message, GssCharacterView.ObserverView);
+
+GssTables.TryFindView(GssVersion.V6, viewTypecode, out int nsIndex, out int viewOrdinal);
+```
+
+# Protocol tables
+Matrix and GSS protocol enums, version enums, patch mappings, and the Matrix/GSS ``[AeroMessageId]`` overloads are generated by ``Aero.ProtocolGen`` from Sift protocol dumps.
+
+The generated files are checked in under `Aero.Gen/Protocol/` and are shipped inside the `Aero.Gen` package. Contributors can regenerate them with:
+```bash
+dotnet run --project Aero.ProtocolGen -c Release
+```
+
+The defaults read from `Aero.Gen/Lib/Sift/Dumps` and write to `Aero.Gen/Protocol`. Commit the generated files if the Sift dumps change.
+
 # Config
-The following settings can be used in a .editorconfig file to adjust the generators output (or it should).
+The following settings can be used in a `.globalconfig` file to adjust the generator's output.
 * ``Aero_Enabled``: Enable or disable the generator
 * ``Aero_BoundsCheck``: Enable or disable bounds checking for the unpacker, will return -bytes read if it couldn't read more from the passed buffer
 * ``Aero_DiagLogging``: Enable or disable diagnostic logging from the packer / unpackers

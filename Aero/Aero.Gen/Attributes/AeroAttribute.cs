@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace Aero.Gen.Attributes
-{    
+{
     [AttributeUsage(AttributeTargets.Class)]
     public class AeroAttribute : Attribute
     {
@@ -13,7 +13,7 @@ namespace Aero.Gen.Attributes
         {
             AeroType = AeroGenTypes.Normal;
         }
-        
+
         public AeroAttribute(AeroGenTypes type)
         {
             AeroType = type;

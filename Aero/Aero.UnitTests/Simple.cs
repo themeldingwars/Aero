@@ -35,58 +35,58 @@ namespace Aero.UnitTests
         public float  Float;
         public double Double;
     }
-    
+
     [AeroBlock]
     public struct SubType3
     {
         public int     IntTest;
         public SubType Sub;
     }
-    
+
     [AeroBlock]
     public struct SubTypeSimple
     {
         public int     IntTest;
     }
-    
+
     [Aero]
     public partial class SubTypeTest2
     {
         public int     IntTest;
         public SubType Sub;
     }
-    
+
     [Aero]
     public partial class SubTypeTest3
     {
         public int      IntTest;
         public SubType3 Sub;
     }
-    
+
     [Aero]
     public partial class Vector2Type
     {
         public Vector2 Vec2;
     }
-    
+
     [Aero]
     public partial class Vector3Type
     {
         public Vector3 Vec3;
     }
-    
+
     [Aero]
     public partial class Vector4Type
     {
         public Vector4 Vec4;
     }
-    
+
     [Aero]
     public partial class QuatType
     {
         public Quaternion Quat;
     }
-    
+
 
     public class Tests
     {
@@ -118,7 +118,7 @@ namespace Aero.UnitTests
             0xF0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x9A, 0x99,
             0x99, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x40
         };
-        
+
         private static byte[] SubType2TypesBytes = new byte[]
         {
             0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x41, 0x9C, 0xFF, 0xFF, 0xFF, 0x64, 0x00, 0x00, 0x00, 0xCE, 0xFF, 0x32, 0x00, 0xC0, 0xBD,
@@ -177,7 +177,7 @@ namespace Aero.UnitTests
                 Assert.Fail("Didn't read all fields");
             }
         }
-        
+
         [Test]
         public void SubTypes2()
         {
@@ -210,7 +210,7 @@ namespace Aero.UnitTests
                     Math.Abs(test.Float  - SimpleTypesRef.Float)  < 0.0001f                    &&
                     Math.Abs(test.Double - SimpleTypesRef.Double) < 0.0001f);
         }
-        
+
         [Test]
         public void Vector2Test()
         {
@@ -228,7 +228,7 @@ namespace Aero.UnitTests
                 Assert.Fail("Didn't read all fields");
             }
         }
-        
+
         [Test]
         public void Vector3Test()
         {
@@ -246,7 +246,7 @@ namespace Aero.UnitTests
                 Assert.Fail("Didn't read all fields");
             }
         }
-        
+
         [Test]
         public void Vector4Test()
         {
@@ -264,7 +264,7 @@ namespace Aero.UnitTests
                 Assert.Fail("Didn't read all fields");
             }
         }
-        
+
         [Test]
         public void QuatTest()
         {

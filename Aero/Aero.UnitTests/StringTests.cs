@@ -34,27 +34,27 @@ namespace Aero.UnitTests
         [AeroString] public string TestString;
         public              byte   Tailing;
     }
-    
+
     [Aero]
     public partial class StringTest5
     {
         [AeroString] public string TestString;
     }
-    
+
     [Aero]
     public partial class StringTest6
     {
         [AeroArray(4)]
         [AeroString(9)] public string[] TestString;
     }
-    
+
     [Aero]
     public partial class StringTest7
     {
         [AeroArray(4)]
         [AeroString] public string[] TestString;
     }
-    
+
     [Aero]
     public partial class StringTest8
     {
@@ -173,7 +173,7 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
-        
+
         [Test]
         public void ArrayOf4FIxedStrings()
         {
@@ -205,7 +205,7 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
-        
+
         [Test]
         public void ArrayOf4NullTerminatedStrings()
         {
@@ -237,7 +237,7 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
-        
+
         [Test]
         public void ArrayOfLengthPrefixedStrings()
         {
@@ -270,7 +270,7 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
-        
+
         [Test]
         public void StringRefLengthContainerTester()
         {

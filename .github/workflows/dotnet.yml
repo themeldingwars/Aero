@@ -23,12 +23,17 @@ jobs:
     - uses: actions/checkout@v7
       with:
         persist-credentials: false
+        submodules: recursive
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 8.0.x
     - name: Restore dependencies
       run: dotnet restore
+    - name: Regenerate protocol files
+      run: dotnet run --project Aero.ProtocolGen -c Release --no-restore
+    - name: Verify protocol files are up to date
+      run: git diff --exit-code -- Aero.Gen/Protocol
     - name: Build
       run: dotnet build --no-restore -c Release
     - name: Test

@@ -14,9 +14,9 @@ namespace Aero.Gen
 
         public AeroReadLog()
         {
-            
+
         }
-        
+
         public AeroReadLog(string parentName, string name, int offset, int length, string typeStr, Type type)
         {
             ParentName = parentName != "" ? parentName : null;
@@ -27,7 +27,7 @@ namespace Aero.Gen
             Type       = type;
             EntryType = LogEntryType.Field;
         }
-        
+
         public AeroReadLog(string parentName, string name, bool isArray, Type type, int offset)
         {
             ParentName = parentName != "" ? parentName : null;

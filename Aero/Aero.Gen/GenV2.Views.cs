@@ -71,7 +71,7 @@ namespace Aero.Gen
             ViewNullableFieldsFor(numNullableFields, (i) =>
             {
                 AddLine($"{NULLABLE_FIELD_BASE_NAME}_{i} = data[offset++];");
-                
+
                 if (Config.DiagLogging) {
                     //AddLine($"ReadLogs.Add((\"{NULLABLE_FIELD_BASE_NAME}_{i}\", offsetBefore, offset - offsetBefore, \"byte\", {NULLABLE_FIELD_BASE_NAME}_{i}));");
                     AddLine($"ReadLogs.Add(new AeroReadLog(\"\", \"{NULLABLE_FIELD_BASE_NAME}_{i}\", offsetBefore, offset - offsetBefore, \"byte\", typeof(byte)));");
@@ -170,7 +170,7 @@ namespace Aero.Gen
                 var isEncounterClass = AgUtils.IsEncounterClass(cd, sm);
 
                 AddLine("int offset = 0;");
-                AddLine("int offsetBefore = 0;");
+                if (Config.DiagLogging) AddLine("int offsetBefore = 0;");
                 if (Config.DiagLogging) AddLine("ReadLogs.Clear();");
                 AddLine();
                 using (DoWhile("offset < data.Length")) {
@@ -181,7 +181,7 @@ namespace Aero.Gen
                         AddLine($"ReadLogs.Add(new AeroReadLog(\"\", $\"SF Id: {{id}}\", offsetBefore, offset - offsetBefore, \"byte\", typeof(byte)));");
                         AddLine("offsetBefore = offset;");
                     }
-                    
+
                     var shadowFieldIdx               = 0;
                     var nullableIdx                  = 0;
                     var nullableFieldsForNullSetting = new Dictionary<int, AeroNode>();
@@ -391,14 +391,15 @@ namespace Aero.Gen
                             AddLine($"{id++} => \"{(node is AeroArrayNode ? node.Nodes[0].Name : node.Name)}\",");
                         }
                     });
+                    AddLine("_ => (string)null,");
                 }
                 UnIndent();
                 AddLine("};");
-                
+
                 AddLine("return str;");
             }
         }
-        
+
         private void GenerateShadowFieldIdToType(ClassDeclarationSyntax cd, SemanticModel sm)
         {
             AddLine("// Returns a type for the shadow field id");
@@ -416,14 +417,15 @@ namespace Aero.Gen
                             AddLine($"{id++} => typeof({node.TypeStr}{(node?.Parent is AeroArrayNode ? "[]" : "")}),");
                         }
                     });
+                    AddLine("_ => (Type)null,");
                 }
                 UnIndent();
                 AddLine("};");
-                
+
                 AddLine("return obj;");
             }
         }
-        
+
         private void GenerateGetShadowFieldsData(ClassDeclarationSyntax cd, SemanticModel sm)
         {
             AddLine("// Get a list of the shadow fields in this view, with data if they are nullable and their id");
@@ -444,7 +446,7 @@ namespace Aero.Gen
                 }
                 UnIndent();
                 AddLine("};");
-                
+
                 AddLine("return data;");
             }
         }

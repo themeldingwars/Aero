@@ -214,8 +214,8 @@ namespace Aero.Gen
                     Reader = (name, typeCast) => $"{name}.X = MemoryMarshal.Read<float>(data.Slice(offset, 4));" +
                                                  $"{name}.Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4));",
                     Writer = (name, typeCast) =>
-                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);" +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);"
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), in {name}.X);" +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), in {name}.Y);"
                 }
             },
             {
@@ -226,9 +226,9 @@ namespace Aero.Gen
                                                  $"{name}.Y = MemoryMarshal.Read<float>(data.Slice(offset + 4, 4));" +
                                                  $"{name}.Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4));",
                     Writer = (name, typeCast) =>
-                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);"     +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);" +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);"
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), in {name}.X);"     +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), in {name}.Y);" +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), in {name}.Z);"
                 }
             },
             {
@@ -240,10 +240,10 @@ namespace Aero.Gen
                                                  $"{name}.Z = MemoryMarshal.Read<float>(data.Slice(offset + 8, 4));" +
                                                  $"{name}.W = MemoryMarshal.Read<float>(data.Slice(offset + 12, 4));",
                     Writer = (name, typeCast) =>
-                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), ref {name}.X);"     +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), ref {name}.Y);" +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), ref {name}.Z);" +
-                        $"MemoryMarshal.Write(buffer.Slice(offset + 12, sizeof(float)), ref {name}.W);"
+                        $"MemoryMarshal.Write(buffer.Slice(offset, sizeof(float)), in {name}.X);"     +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 4, sizeof(float)), in {name}.Y);" +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 8, sizeof(float)), in {name}.Z);" +
+                        $"MemoryMarshal.Write(buffer.Slice(offset + 12, sizeof(float)), in {name}.W);"
                 }
             },
             {
@@ -490,27 +490,41 @@ namespace Aero.Gen
 
         public virtual void CreateReaderV2(ClassDeclarationSyntax cd)
         {
+            var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
+            var isView   = AgUtils.IsViewClass(cd, SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree));
+            var numNullableFields = isView ? GetNumNullableFields(cd) : 0;
+            var emitOffsetBefore = Config.DiagLogging && (HasLoggableField(rootNode) || numNullableFields > 0);
+
             using (Function("public int Unpack(ReadOnlySpan<byte> data)")) {
                 AddLine("int offset = 0;");
-                AddLine("int offsetBefore = 0;");
+                if (emitOffsetBefore) AddLine("int offsetBefore = 0;");
                 if (Config.DiagLogging) AddLine("ReadLogs.Clear();");
                 AddLine();
 
-                var isView = AgUtils.IsViewClass(cd, SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree));
                 if (isView) {
                     AddLine("// Nullable bitfields fields");
-                    GenerateViewNullableFieldUnpacker(GetNumNullableFields(cd));
+                    GenerateViewNullableFieldUnpacker(numNullableFields);
                     AddLine();
                 }
 
                 var nullableIdx = 0;
-                var rootNode    = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
                 CreateLogicFlow(rootNode,
                     CreateUnpackerPreNode,
                     node => { CreateUnpackerOnNode(isView, node, ref nullableIdx); });
 
                 AddLine("return offset;");
             }
+        }
+
+        private static bool HasLoggableField(AeroNode rootNode)
+        {
+            var found = false;
+            AeroSourceGraphGen.WalkTree(rootNode, node =>
+            {
+                if (!found && (node is AeroFieldNode or AeroStringNode))
+                    found = true;
+            });
+            return found;
         }
 
         private int CreateUnpackerOnNode(bool isView, AeroNode node, ref int nullableIdx, bool isEncounter = false)
@@ -581,7 +595,7 @@ namespace Aero.Gen
         private void LogDiagRead(AeroNode node, bool isArrayDefine = false, bool iaAeroBlockDefine = false)
         {
             if (!Config.DiagLogging) return;
-            
+
             var parentName = node?.Parent.GetFullName().Replace("[", "[{").Replace("]", "}]");
             var name       = node.GetFullName().Replace("[", "[{").Replace("]", "}]");
 
@@ -602,9 +616,9 @@ namespace Aero.Gen
                         $"false, "                                          +
                         $"typeof({node.TypeStr.TrimEnd('[', ']')}), "        +
                         $"offset));");
-            } 
+            }
             else if (node is not AeroArrayNode && node is not AeroIfNode && node is not AeroBlockNode) {
-                
+
                 //AddLine($"ReadLogs.Add(($\"{name}, {parentName}\", offsetBefore, offset  - offsetBefore, \"{node.TypeStr}\", {node.GetFullName()}));");
                 AddLine($"ReadLogs.Add(new AeroReadLog($\"{parentName}\", " +
                         $"$\"{name}\", "                                    +
@@ -626,7 +640,7 @@ namespace Aero.Gen
             if (node is AeroBlockNode) {
                 LogDiagRead(node, iaAeroBlockDefine: true);
             }
-            
+
             if (node is AeroArrayNode arrayNode) {
                 if (arrayNode.Mode == AeroArrayNode.Modes.ReadToEnd) {
                     AddLine($"{arrayNode.Nodes.First().Name}Count = 0;");
@@ -650,8 +664,6 @@ namespace Aero.Gen
                     AddLine();
                 }
 
-                var combinedSize = 0;
-                var nullableIdx  = 0;
                 var rootNode     = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
                 CreateLogicFlow(rootNode,
                     preNode: GetPackedSizePreNode,

@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Aero.Gen;
 using Aero.Gen.Attributes;
+using Aero.Protocol;
 using static Aero.Gen.Attributes.AeroIfAttribute;
 using static Aero.Gen.Attributes.AeroMessageIdAttribute;
 
@@ -129,65 +130,65 @@ namespace Aero.TestCases
     }
 
     [Aero]
-    [AeroMessageId(MsgType.Matrix, MsgSrc.Both, 1)]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.Login)]
     public partial class MatrixBothTest1
     {
     }
 
     [Aero]
-    [AeroMessageId(MsgType.Matrix, MsgSrc.Command, 2)]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.SuperPing)]
     public partial class MatrixMsgCmdTest2
     {
     }
 
     [Aero]
-    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, 3)]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.SuperPong)]
     public partial class MatrixMsgTest3
     {
     }
 
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Both, 1, 1)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Both, GssMessage.RequestLogout)]
     public partial class GssBothTest1
     {
     }
 
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Command, 1, 2)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Command, GssCharacterCommand.RequestLogout)]
     public partial class GssMsgCmdTest2
     {
     }
 
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Message, 1, 3)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, GssCharacterMessage.CharacterLoaded)]
     public partial class GssMsgTest3
     {
     }
 
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Both, 2, 1)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Both, GssMessage.PingMap)]
     public partial class GssBothTest4
     {
     }
 
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Command, 2, 2)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Command, GssCharacterCommand.ActivateAbility)]
     public partial class GssMsgCmdTest5
     {
     }
 
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Message, 2, 3)]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Message, 3, 3)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, GssCharacterMessage.RewardInfo)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, GssVehicleMessage.CurrentPoseUpdate)]
     public partial class GssMsgTest6
     {
     }
 
-    [AeroBlock] 
+    [AeroBlock]
     public struct NonFixedBlock
     {
         public byte Length;
-        
+
         [AeroArray(nameof(Length))]
         public int[] Test;
 
@@ -203,7 +204,7 @@ namespace Aero.TestCases
         private int Id;
 
         [AeroNullable] private TestSubDataOne TestBlock;
-        
+
         [AeroNullable] private NonFixedBlock TestBlockTwo;
 
         //public Vector3 Position;

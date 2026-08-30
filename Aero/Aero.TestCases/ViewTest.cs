@@ -1,11 +1,10 @@
-﻿using System.Numerics;
-using Aero.Gen;
-using Aero.Gen.Attributes;
-using Aero.Gen.Attributes;
-using static Aero.Gen.Attributes.AeroIfAttribute;
-using static Aero.Gen.Attributes.AeroMessageIdAttribute;
-using System.Numerics;
-using System;
+﻿ using System.Numerics;
+ using Aero.Gen;
+ using Aero.Gen.Attributes;
+ using Aero.Protocol;
+ using static Aero.Gen.Attributes.AeroIfAttribute;
+ using static Aero.Gen.Attributes.AeroMessageIdAttribute;
+ using System;
 
 namespace Aero.TestCases
 {
@@ -14,17 +13,17 @@ namespace Aero.TestCases
     {
         [AeroString]
         public string PerimiterSetName;
-        
+
         [AeroNullable]
         private ActiveDataStruct ActiveData;
 
         [AeroNullable] private int TestNullable;
-        
+
         // [AeroNullable] [AeroArray(4)] private int[] TestNullableArray;
 
         // public ScopeBubbleInfoData            ScopeBubbleInfo;
     }
-    
+
     [AeroBlock]
     public struct ActiveDataStruct
     {
@@ -46,7 +45,7 @@ namespace Aero.TestCases
         [AeroArray(typeof(byte))]
         public Vector3[] Offsets_2;
     }
-    
+
     [AeroBlock]
     public struct ScopeBubbleInfoData
     {
@@ -54,7 +53,7 @@ namespace Aero.TestCases
         [AeroArray(8)]
         public byte[] Unk;
     }
-    
+
 
     [Aero(AeroGenTypes.View)]
     public partial class Outpost_ObserverView
@@ -103,5 +102,20 @@ namespace Aero.TestCases
         [AeroNullable] private uint NearbyResourceItems_15;
 
         private ScopeBubbleInfoData ScopeBubbleInfo;
+    }
+
+    [Aero(AeroGenTypes.View)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, GssMeldingView.ObserverView)]
+    public partial class Melding_ObserverView_Routed
+    {
+        private int TestValue;
+    }
+
+    // A message routed through a view: the wire typecode is the view route's id, not the namespace's.
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, GssCharacterMessage.Killed, GssCharacterView.CombatView)]
+    public partial class Character_Killed_ViaCombatView
+    {
+        private uint VictimId;
     }
 }
