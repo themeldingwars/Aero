@@ -13,7 +13,7 @@ namespace Aero.TestCases
     {
         public void AeroTest2() {}
     }
-    
+
     class Program
     {
         private static Compilation InputCompilation = CreateCompilation(@"
@@ -21,6 +21,7 @@ using System.Net.Security;
 using Aero.Gen.Attributes;
 using System.Numerics;
 using Aero.Gen;
+using Aero.Protocol;
 
 namespace Aero.TestCases
 {
@@ -122,10 +123,10 @@ public class Test2
         public long   Long;
         public ulong  ULong;
         public float  Float;
-        
+
         [AeroIf(""IntTest"", -100)]
         public double Double;
-        
+
         [AeroIf(nameof(IntTest), 100)]
         [AeroIf(nameof(IntTest), 200)]
         [AeroArray(nameof(Byte))]
@@ -143,16 +144,16 @@ public class Test2
 
         [AeroString(20)]
         public string TestString;
-        
+
         [AeroString(nameof(Byte))]
         public string TestString2;
-        
+
         [AeroString(typeof(int))]
         public string TestString3;
 
         public TestCase1()
         {
-            
+
         }
     }
 }
@@ -161,70 +162,71 @@ public class Test2
     [AeroMessageId(MsgType.Control, MsgSrc.Both, 1)]
     public partial class ControlMsgBothTest1
     {
-        
-    }
-    
-    [Aero]
-    [AeroMessageId(MsgType.Matrix, MsgSrc.Both, 1)]
-    public partial class MatrixBothTest1
-    {
-        
-    }
-    
-    [Aero]
-    [AeroMessageId(MsgType.Matrix, MsgSrc.Command, 2)]
-    public partial class MatrixMsgCmdTest2
-    {
-        
-    }
-    
-    [Aero]
-    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, 3)]
-    public partial class MatrixMsgTest3
-    {
-        
-    }
-    
-    [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Both, 1, 1)]
-    public partial class GssBothTest1
-    {
-        
-    }
-    
-    [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Command, 1, 2)]
-    public partial class GssMsgCmdTest2
-    {
-        
-    }
-    
-    [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Message, 1, 3)]
-    public partial class GssMsgTest3
-    {
-        
+
     }
 
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Both, 2, 1)]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.Login)]
+    public partial class MatrixBothTest1
+    {
+
+    }
+
+    [Aero]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.SuperPing)]
+    public partial class MatrixMsgCmdTest2
+    {
+
+    }
+
+    [Aero]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.SuperPong)]
+    public partial class MatrixMsgTest3
+    {
+
+    }
+
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Both, GssMessage.RequestLogout)]
+    public partial class GssBothTest1
+    {
+
+    }
+
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Command, GssCharacterCommand.RequestLogout)]
+    public partial class GssMsgCmdTest2
+    {
+
+    }
+
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, GssCharacterMessage.CharacterLoaded)]
+    public partial class GssMsgTest3
+    {
+
+    }
+
+    [Aero]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Both, GssMessage.PingMap)]
     public partial class GssBothTest4
     {
-        
+
     }
-    
+
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Command, 2, 2)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Command, GssCharacterCommand.ActivateAbility)]
     public partial class GssMsgCmdTest5
     {
-        
+
     }
-    
+
     [Aero]
-    [AeroMessageId(MsgType.GSS, MsgSrc.Message, 2, 3)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, GssCharacterMessage.RewardInfo)]
+    [AeroMessageId(MsgType.GSS, MsgSrc.Message, GssVehicleMessage.CurrentPoseUpdate)]
     public partial class GssMsgTest6
     {
-        
+
     }
 
     [Aero(AeroGenTypes.View)]
@@ -307,14 +309,14 @@ public class Test2
             /*var data = new byte[10000000];
             new Random().NextBytes(data);
             var test = new TestCase1Main();
-            
+
             try {
                 test.Unpack(data);
             }
             catch (Exception e) {
                 Console.WriteLine(e);
             }
-            
+
             //test.GetPackedSize();
 
             foreach (var readLog in test.GetDiagReadLogs()) {
@@ -333,7 +335,7 @@ public class Test2
             //var msgHander1 = AeroRouting.GetNewMessageHandler(AeroMessageIdAttribute.MsgType.Matrix, AeroMessageIdAttribute.MsgSrc.Command, 2);
 
         }
-        
+
         private static Compilation CreateCompilation(string source)
             => CSharpCompilation.Create("compilation",
                 new[] { CSharpSyntaxTree.ParseText(source) },

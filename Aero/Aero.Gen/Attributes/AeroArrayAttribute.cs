@@ -14,17 +14,17 @@ namespace Aero.Gen.Attributes
         public AeroArrayAttribute()
         {
         }
-        
+
         public AeroArrayAttribute(int length)
         {
             Length = length;
         }
-        
+
         public AeroArrayAttribute(string key)
         {
             Key = key;
         }
-        
+
         public AeroArrayAttribute(Type typ)
         {
             Typ = typ;

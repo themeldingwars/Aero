@@ -17,7 +17,7 @@ Why Aero, well she did talk alot so....
 * Classes should be marked partial and extend from AeroBase. (partial to allow extending with the readers, writer and inspectors).
 * Classes should be marked with the [Aero] attribute.
 * We can have a testing setup to run the packet captures through, the result of reading and then writing back should match.
-    
+
 # Attributes
 ## ``[Aero]``
 Marks a class as one that should have readers, writers and such generated for it.
@@ -32,7 +32,7 @@ Marks a class as one that should have readers, writers and such generated for it
   * Matrix: ``Aero(AeroType.Msg, AeroMsgType.Matrix, 1, Ver: 1946)``
   * GSS: ``Aero(AeroType.Msg, AeroMsgType.GSS, AeroSrc.Server, 2, 187, Ver: 1946)``
 * ``Ver`` is the first known version that this message is good for, so from this to the next ver found for this message
-  
+
 
 ## ``[AeroArray]``
 Marks a field as an array, there are a few variants of this.
@@ -93,13 +93,13 @@ public partial class TimeSyncResponse : AeroBase
         ClientTime = ReadUint(data, ref offset);
         ServerTime = ReadUint(data, ref offset);
     }
-    
+
     public byte[] Write()
     {
         var buffer = new AeroBuffer();
         buffer.WriteUint(ClientTime);
         buffer.WriteUint(ServerTime);
-        
+
         return buffer.ToArray();
     }
 }
@@ -139,11 +139,11 @@ public partial class Login : AeroBase
         CharacterGUID =  ReadUlong(data, ref offset);
         Unk3 = ReadArray<byte>(data, 13, ref offset);
         Red5Sig2 = ReadNullTermString(data, ref offset);
-        
+
         int Red5Sig1_len = data.length - offset;
         Red5Sig1 = ReadArray<byte>(data, Red5Sig1_len, ref offset);
     }
-    
+
     public byte[] Write()
     {
         var buffer = AeroBuffer();
@@ -184,7 +184,7 @@ public partial class StatData : AeroBase
 [Aero(AeroType.Block]
 public partial class StatDataBase : AeroBase
 {
-    
+
 }
 
 [Aero(AeroType.Block]
@@ -217,11 +217,11 @@ public partial class PostStatEvent : AeroBase
     {
         int offset = 0;
     }
-    
+
     public byte[] Write()
     {
         var buffer = new AeroBuffer();
-        
+
         return buffer.ToArray();
     }
 }
@@ -240,7 +240,7 @@ public partial class ConfirmedPoseUpdate : AeroBase
         PosAndRot = 1,
         Aim = 2
     }
-    
+
     [Aero(AeroType.Block)]
     public struct PosAndRotData
     {
@@ -252,15 +252,15 @@ public partial class ConfirmedPoseUpdate : AeroBase
     public ushort ShortTime1;
     public PoseType Flags;
     public byte Unk3;
-    
+
     [AeroIf(nameof(Flags), PoseType.PosAndRot)]
     public PosAndRotData PosAndRot;
-    
+
     public Vector3 Velocity;
-    
+
     [AeroIf(nameof(Flags), PoseType.Aim)]
     public Vector3 Aim;
-    
+
     public ushort Unk5;
     public short GroundTimePositiveAirTimeNegative;
     public short TimeSinceLastJump;
@@ -277,40 +277,40 @@ public partial class ConfirmedPoseUpdate : AeroBase
         ShortTime1 = ReadUshort(data, ref offset);
         Flags = (PoseType)ReadByte(data, ref offset);
         Unk3 = ReadByte(data, ref offset);
-        
+
         if (Flags.HasFlag(PoseType.PosAndRot))
         {
             PosAndRot.Pos = ReadVector3(data, ref offset); // Some basic types liek Vector3s will have custom readers / writers written for them
             PosAndRot.Rot = ReadQuat(data, ref offset);
             PosAndRot.MovementState = Readshort(data, ref offset);
         }
-        
+
         PosAndRot.Pos = ReadVector3(data, ref offset);
-        
+
         if (Flags.HasFlag(PoseType.Aim))
         {
             Aim = ReadVector3(data, ref offset);
         }
-        
+
         Unk5 = ReadUshort(data, ref offset);
         GroundTimePositiveAirTimeNegative = ReadShort(data, ref offset);
         TimeSinceLastJump = ReadShort(data, ref offset);
     }
-    
+
     public byte[] Write()
     {
-        var buffer = new AeroBuffer();   
-        
+        var buffer = new AeroBuffer();
+
         if (Flags.HasFlag(PoseType.PosAndRot))
         {
 
-        }    
-        
+        }
+
         if (Flags.HasFlag(PoseType.Aim))
         {
-            
+
         }
-        
+
         return buffer.ToArray();
     }
 }

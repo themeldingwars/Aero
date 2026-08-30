@@ -26,28 +26,28 @@ namespace Aero.UnitTests
         [AeroArray(nameof(IntArrayRefLen))]
         public int[] ArrayTest;
     }
-    
+
     [Aero]
     public partial class IntArrayReadToEndTest
     {
         [AeroArray(-4)]
         public int[] ArrayTest;
     }
-    
+
     [Aero]
     public partial class IntArrayTypeLenTest
     {
         [AeroArray(typeof(int))]
         public int[] ArrayTest;
     }
-    
+
     [Aero]
     public partial class ByteArrayFixedTest
     {
         [AeroArray(10)]
         public byte[] ArrayTest;
     }
-    
+
     [Aero]
     public partial class ArrayBlockItemArrayFixedTest
     {
@@ -123,14 +123,14 @@ namespace Aero.UnitTests
                     testObject.ArrayTest[3] == 4) {
                     Assert.Pass("Array read and values matched");
                 }
-                
+
                 Assert.Fail("Array values didn't match");
             }
             else {
                 Assert.Fail("Didn't read all fields");
             }
         }
-        
+
         [Test]
         public void IntArrayReadToEndTester()
         {
@@ -146,14 +146,14 @@ namespace Aero.UnitTests
                     testObject.ArrayTest[3] == 4) {
                     Assert.Pass("Array read and values matched");
                 }
-                
+
                 Assert.Fail("Array values didn't match");
             }
             else {
                 Assert.Fail("Didn't read all fields");
             }
         }
-        
+
         private static byte[] IntArrayVarestBytes = new byte[] { 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00};
         [Test]
         public void IntArrayRefTester()
@@ -170,14 +170,14 @@ namespace Aero.UnitTests
                     testObject.ArrayTest[3] == 4) {
                     Assert.Pass("Array read and values matched");
                 }
-                
+
                 Assert.Fail("Array values didn't match");
             }
             else {
                 Assert.Fail("Didn't read all fields");
             }
         }
-        
+
         [Test]
         public void IntArrayTypeTester()
         {
@@ -193,17 +193,17 @@ namespace Aero.UnitTests
                     testObject.ArrayTest[3] == 4) {
                     Assert.Pass("Array read and values matched");
                 }
-                
+
                 Assert.Fail("Array values didn't match");
             }
             else {
                 Assert.Fail("Didn't read all fields");
             }
         }
-        
+
         private static byte[] ByteArrayFixedTestBytes = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 ,9 };
 
-        
+
         [Test]
         public void ByteArrayFixedTest()
         {
@@ -218,7 +218,7 @@ namespace Aero.UnitTests
                         Assert.Fail("Array values didn't match");
                     }
                 }
-                
+
                 Assert.Pass("Array read and values matched");
             }
             else {
@@ -244,14 +244,14 @@ namespace Aero.UnitTests
                     testObject.ArrayTest[1].B == 20.5f) {
                     Assert.Pass("Array read and values matched");
                 }
-                
+
                 Assert.Fail("Array values didn't match");
             }
             else {
                 Assert.Fail("Didn't read all fields");
             }
         }
-        
+
         [Test]
         public void ArrayOfVector2SFixedTester()
         {
@@ -272,7 +272,7 @@ namespace Aero.UnitTests
                 Assert.Fail("Didn't read all fields");
             }
         }
-        
+
         [Test]
         public void AeroBlockWithSeprateArrayCountContainerTester()
         {

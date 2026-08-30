@@ -10,22 +10,22 @@ namespace Aero.Gen.Attributes
         public int    Length;
         public string LengthStr;
         public Type LengthType;
-        
+
         public AeroStringAttribute()
         {
-            
+
         }
-        
+
         public AeroStringAttribute(int length)
         {
             Length = length;
         }
-        
+
         public AeroStringAttribute(string length)
         {
             LengthStr = length;
         }
-        
+
         public AeroStringAttribute(Type lengthType)
         {
             LengthType = lengthType;

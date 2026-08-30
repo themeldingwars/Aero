@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using Aero.Gen;
 using Aero.Gen.Attributes;
+using Aero.Protocol;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -240,25 +241,151 @@ namespace Aero.Gen
             return data;
         }
 
-        public static AeroMessageIdAttribute GetAeroMessageIdAttributeInfo(AttributeSyntax attributeSyantax)
+        public static (bool ok, AeroMessageIdAttribute info, string error) GetAeroMessageIdAttributeInfo(AttributeSyntax attributeSyntax, SemanticModel semanticModel)
         {
-            var numArgs = attributeSyantax.ArgumentList?.Arguments.Count ?? 0;
+            if (attributeSyntax.ArgumentList == null || attributeSyntax.ArgumentList.Arguments.Count < 3)
+                return (false, null, "AeroMessageId requires at least 3 arguments");
 
-            if (numArgs >= 3) {
-                var msgType      = (AeroMessageIdAttribute.MsgType) Enum.Parse(typeof(AeroMessageIdAttribute.MsgType), attributeSyantax.ArgumentList.Arguments[0].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgType.", ""));
-                var msgSrc       = (AeroMessageIdAttribute.MsgSrc) Enum.Parse(typeof(AeroMessageIdAttribute.MsgSrc), attributeSyantax.ArgumentList.Arguments[1].Expression.ToString().Replace("AeroMessageIdAttribute.", "").Replace("MsgSrc.", ""));
-                var messageId    = int.Parse(attributeSyantax.ArgumentList.Arguments[2].Expression.ToString());
-                int controllerId = -1;
+            var args = attributeSyntax.ArgumentList.Arguments;
+            if (args.Count > 6)
+                return (false, null, "AeroMessageId supports at most 6 arguments");
 
-                if (numArgs >= 4) {
-                    controllerId = messageId;
-                    messageId    = int.Parse(attributeSyantax.ArgumentList.Arguments[3].Expression.ToString());
-                }
+            if (!TryGetEnumConstant(semanticModel, args[0], typeof(AeroMessageIdAttribute.MsgType), out var typValue, out var typError))
+                return (false, null, typError);
+            if (!TryGetEnumConstant(semanticModel, args[1], typeof(AeroMessageIdAttribute.MsgSrc), out var srcValue, out var srcError))
+                return (false, null, srcError);
 
-                return new AeroMessageIdAttribute(msgType, msgSrc, controllerId, messageId);
+            var typ = (AeroMessageIdAttribute.MsgType)typValue;
+            var src = (AeroMessageIdAttribute.MsgSrc)srcValue;
+            var thirdType = semanticModel.GetTypeInfo(args[2].Expression).Type;
+
+            if (thirdType != null && thirdType.SpecialType == SpecialType.System_Int32)
+            {
+                if (typ != AeroMessageIdAttribute.MsgType.Control)
+                    return (false, null, $"numeric AeroMessageId ids can only be used for Control messages, got {typ}");
+
+                var idConstant = semanticModel.GetConstantValue(args[2].Expression);
+                if (!idConstant.HasValue)
+                    return (false, null, "the numeric AeroMessageId id must be a constant");
+
+                return (true, new AeroMessageIdAttribute(typ, src, Convert.ToInt32(idConstant.Value)), null);
             }
 
-            return null;
+            if (thirdType is INamedTypeSymbol messageEnum && messageEnum.TypeKind == TypeKind.Enum)
+            {
+                var messageConstant = semanticModel.GetConstantValue(args[2].Expression);
+                if (!messageConstant.HasValue)
+                    return (false, null, $"the AeroMessageId message argument '{args[2].Expression}' must be a constant enum member");
+
+                string messageEnumName = messageEnum.Name;
+                string messageName = EnumMemberName(args[2].Expression);
+                int messageOrdinal = Convert.ToInt32(messageConstant.Value);
+
+                string versionEnumName = messageEnumName == "MatrixMessage" ? "MatrixVersion" : "GssVersion";
+                if (messageEnumName == "MatrixMessage" && typ != AeroMessageIdAttribute.MsgType.Matrix)
+                    return (false, null, $"MatrixMessage can only be used with MsgType.Matrix, got {typ}");
+                if (messageEnumName != "MatrixMessage" && typ != AeroMessageIdAttribute.MsgType.GSS)
+                    return (false, null, $"{messageEnumName} can only be used with MsgType.GSS, got {typ}");
+                int enumKind = 0;
+                if (messageEnumName != "MatrixMessage" && !GssTables.TryGetProtocolEnumInfo(messageEnumName, out _, out enumKind))
+                    return (false, null, $"'{messageEnumName}' is not a supported AeroMessageId protocol enum");
+
+                if (messageEnumName != "MatrixMessage")
+                {
+                    if (enumKind == GssTables.Kind.View)
+                    {
+                        if (src == AeroMessageIdAttribute.MsgSrc.Command)
+                            return (false, null, $"{messageEnumName} is a view and cannot be used with MsgSrc.Command");
+                    }
+                    else
+                    {
+                        if (messageEnumName == "GssMessage" && src == AeroMessageIdAttribute.MsgSrc.Command)
+                            return (false, null, "GssMessage is a server -> client message and cannot be used with MsgSrc.Command");
+                        if (messageEnumName.EndsWith("Command") && src == AeroMessageIdAttribute.MsgSrc.Message)
+                            return (false, null, $"{messageEnumName} is a client -> command and cannot be used with MsgSrc.Message");
+                        if (messageEnumName.EndsWith("Message") && src == AeroMessageIdAttribute.MsgSrc.Command)
+                            return (false, null, $"{messageEnumName} is a server -> client message and cannot be used with MsgSrc.Command");
+                    }
+                }
+
+                string viewEnumName = null;
+                int viewOrdinal = -1;
+                string viewName = null;
+                int versionArgIndex = 3;
+
+                if (messageEnumName != "MatrixMessage" && args.Count > 3
+                    && semanticModel.GetTypeInfo(args[3].Expression).Type is INamedTypeSymbol thirdArgEnum
+                    && thirdArgEnum.TypeKind == TypeKind.Enum
+                    && thirdArgEnum.Name.EndsWith("View", StringComparison.Ordinal))
+                {
+                    if (enumKind == GssTables.Kind.View)
+                        return (false, null, $"{messageEnumName} is a view class and cannot take a view argument, use (typ, src, {messageEnumName}, from, to)");
+
+                    string expectedViewEnum = messageEnumName.EndsWith("Message", StringComparison.Ordinal) || messageEnumName.EndsWith("Command", StringComparison.Ordinal)
+                        ? messageEnumName.Substring(0, messageEnumName.Length - 7) + "View"
+                        : null;
+                    if (expectedViewEnum == null)
+                        return (false, null, $"{messageEnumName} has no views, the view argument is not allowed");
+                    if (thirdArgEnum.Name != expectedViewEnum)
+                        return (false, null, $"'{thirdArgEnum.Name}' is not a view of the namespace of '{messageEnumName}', expected '{expectedViewEnum}'");
+
+                    var viewConstant = semanticModel.GetConstantValue(args[3].Expression);
+                    if (!viewConstant.HasValue)
+                        return (false, null, $"the AeroMessageId view argument '{args[3].Expression}' must be a constant enum member");
+
+                    viewEnumName = thirdArgEnum.Name;
+                    viewOrdinal = Convert.ToInt32(viewConstant.Value);
+                    viewName = EnumMemberName(args[3].Expression);
+                    versionArgIndex = 4;
+                }
+
+                int versionFrom = 0;
+                int versionTo = -1;
+                if (args.Count > versionArgIndex)
+                {
+                    if (!TryGetEnumConstant(semanticModel, args[versionArgIndex], null, out versionFrom, out var fromError))
+                        return (false, null, fromError);
+                }
+                if (args.Count > versionArgIndex + 1)
+                {
+                    if (!TryGetEnumConstant(semanticModel, args[versionArgIndex + 1], null, out versionTo, out var toError))
+                        return (false, null, toError);
+                }
+
+                return (true, AeroMessageIdAttribute.CreateProtocol(typ, src, messageEnumName, messageOrdinal, messageName, versionEnumName, versionFrom, versionTo, viewEnumName, viewOrdinal, viewName), null);
+            }
+
+            return (false, null, "the third AeroMessageId argument must be a numeric id for Control messages or a protocol message enum for Matrix/GSS messages");
+        }
+
+        static string EnumMemberName(ExpressionSyntax expression) => expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
+            IdentifierNameSyntax identifier => identifier.Identifier.Text,
+            _ => expression.ToString()
+        };
+
+        static bool TryGetEnumConstant(SemanticModel semanticModel, AttributeArgumentSyntax argument, Type expectedEnum, out int value, out string error)
+        {
+            var constant = semanticModel.GetConstantValue(argument.Expression);
+            if (!constant.HasValue)
+            {
+                value = 0;
+                error = $"the AeroMessageId argument '{argument.Expression}' must be a constant enum value";
+                return false;
+            }
+
+            var argumentType = semanticModel.GetTypeInfo(argument.Expression).Type;
+            if (expectedEnum != null && argumentType != null && !argumentType.Name.Equals(expectedEnum.Name, StringComparison.Ordinal))
+            {
+                value = 0;
+                error = $"the AeroMessageId argument '{argument.Expression}' must be {expectedEnum.Name}, got {argumentType.Name}";
+                return false;
+            }
+
+            value = Convert.ToInt32(constant.Value);
+            error = null;
+            return true;
         }
 
         public static bool IsViewClass(ClassDeclarationSyntax cd, SemanticModel sm)
@@ -285,7 +412,7 @@ namespace Aero.Gen
             return NodeWithName<AttributeSyntax>(fd, name);
                 fd.DescendantNodes().OfType<AttributeSyntax>()
                      .First(x => x.DescendantNodes().OfType<IdentifierNameSyntax>().Any(y => y.Identifier.Text == name));
-                     
+
                      .FirstOrDefault(x => Enumerable.OfType<IdentifierNameSyntax>(x.DescendantNodes()).Any(y =>
                 y.Identifier.Text == name));
         }*/

@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Aero.Gen\Aero.Gen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
+        <ProjectReference Include="..\Aero.ProtocolGen\Aero.ProtocolGen.csproj" />
     </ItemGroup>
 
     <ItemGroup>

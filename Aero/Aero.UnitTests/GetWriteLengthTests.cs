@@ -20,7 +20,7 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
-        
+
         [Test]
         public void IfChecksIfPassGetPackedLength()
         {
@@ -37,7 +37,7 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
-        
+
         [Test]
         public void IfChecksIfFailGetPackedLength()
         {
@@ -53,7 +53,7 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
-        
+
         [Test]
         public void ArrayFixedTypeGetPackedLength()
         {
@@ -69,7 +69,7 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
-        
+
         [Test]
         public void ArrayLenTypeTypeGetPackedLength()
         {
@@ -85,7 +85,7 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
-        
+
         [Test]
         public void ArrayFixedLenBlockTypeGetPackedLength()
         {
@@ -101,7 +101,7 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
-        
+
         [Test]
         public void ArrayTypeLenBlockTypeGetPackedLength()
         {
@@ -117,7 +117,7 @@ namespace Aero.UnitTests
                 Assert.Fail();
             }
         }
-        
+
         [Test]
         public void BlockWithArraysLenTest()
         {

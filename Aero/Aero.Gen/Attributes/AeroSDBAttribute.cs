@@ -7,7 +7,7 @@ namespace Aero.Gen.Attributes
     public class AeroSdbAttribute : Attribute
     {
         public static string Name = "AeroSdb";
-        
+
         public        string tableName;
         public        string columnName;
 
