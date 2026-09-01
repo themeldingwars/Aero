@@ -122,7 +122,7 @@ namespace Aero.Gen
                 var snRecv = (AeroSyntaxReceiver) context.SyntaxReceiver;
                 snRecv.Context = context;
 
-                if (config.Enabled) {
+                if (config.Enabled && snRecv.ClassesToAugment.Count > 0) {
                     snRecv.ResolveMessageIds(context);
 
                     // Aero message classes
