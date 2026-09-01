@@ -150,6 +150,24 @@ namespace Aero.Gen
         }
     }
 
+    public class AeroBlobNode : AeroNode
+    {
+        public enum Modes : byte
+        {
+            ReadToEnd,
+            LenTypePrefixed,
+            Ref
+        }
+
+        public Modes  Mode;
+        public string PrefixTypeStr;
+        public string RefFieldName;
+
+        public override bool IsFixedSize() => false;
+
+        public override int GetSize() => -1;
+    }
+
     public class AeroStringNode : AeroNode
     {
         public enum Modes : byte
@@ -183,6 +201,12 @@ namespace Aero.Gen
         {
             public Dictionary<string, string> CastedNameToType = new();
             public int                        Idx              = 0;
+
+            // A read-to-end blob was seen, fields after it can't be read
+            public bool                       BlobReadToEndSeen;
+
+            // Names of fields seen so far, used to warn when a blob ref points at a later field
+            public HashSet<string>            SeenFieldNames = new();
         }
 
         public static AeroNode BuildTree(AeroSyntaxReceiver snr, ClassDeclarationSyntax cls, bool allowPrivate = false) =>
@@ -205,7 +229,22 @@ namespace Aero.Gen
             state ??= new BuildTreeState();
             AeroNode currentNode = rootNode;
 
-            foreach (var field in fields) {
+            var fieldList = fields.ToList();
+
+            // Warn about blob refs that point at fields declared after the blob, the ref would read as default.
+            // Only done at the top level, block fields are walked one at a time so the order can't be seen
+            if (parent == null) {
+                for (int i = 0; i < fieldList.Count; i++) {
+                    var blobData = AgUtils.GetBlobInfo(fieldList[i]);
+                    if (blobData.IsBlob && blobData.BlobMode == AeroBlobInfo.Mode.RefField && blobData.KeyName != null &&
+                        !fieldList.Take(i).Any(f => AgUtils.GetFieldName(f) == blobData.KeyName)) {
+                        snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.AeroBlobRefAfterBlobWarning,
+                            fieldList[i].GetLocation(), AgUtils.GetFieldName(fieldList[i]), blobData.KeyName));
+                    }
+                }
+            }
+
+            foreach (var field in fieldList) {
                 AeroGenerator.LastCheckedField = field;
 
                 var fieldName = AgUtils.GetFieldName(field);
@@ -250,6 +289,69 @@ namespace Aero.Gen
 
                     currentNode.Nodes.Add(ifNode);
                     currentNode = ifNode;
+                }
+
+                // Blobs
+                var blobAttrData = AgUtils.GetBlobInfo(field);
+                if (blobAttrData.IsBlob) {
+                    if (blobAttrData.Error != null) {
+                        snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.AeroBlobInvalidArgumentError,
+                            field.GetLocation(), fieldName, blobAttrData.Error));
+                        break;
+                    }
+
+                    var isBlobByteArray = typeInfo is IArrayTypeSymbol blobArrayType &&
+                                          blobArrayType.Rank == 1 &&
+                                          blobArrayType.ElementType.SpecialType == SpecialType.System_Byte;
+                    if (!isBlobByteArray) {
+                        snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.AeroBlobNotByteArrayError,
+                            field.GetLocation(), fieldName, typeStr));
+                        break;
+                    }
+
+                    if (state.BlobReadToEndSeen) {
+                        snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.AeroBlobPositionError,
+                            field.GetLocation(), fieldName,
+                            blobAttrData.BlobMode == AeroBlobInfo.Mode.ReadToEnd
+                                ? "only one read-to-end [AeroBlob] is allowed per class"
+                                : "fields can't follow a read-to-end [AeroBlob]"));
+                        break;
+                    }
+
+                    if (blobAttrData.BlobMode == AeroBlobInfo.Mode.ReadToEnd) {
+                        var insideArray = false;
+                        for (var ancestor = currentNode; ancestor != null && !ancestor.IsRoot; ancestor = ancestor.Parent) {
+                            if (ancestor is AeroArrayNode) {
+                                insideArray = true;
+                                break;
+                            }
+                        }
+
+                        if (insideArray) {
+                            snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.AeroBlobPositionError,
+                                field.GetLocation(), fieldName, "a read-to-end [AeroBlob] can't be inside an array"));
+                            break;
+                        }
+
+                        state.BlobReadToEndSeen = true;
+                    }
+
+                    var blobNode = new AeroBlobNode
+                    {
+                        Name          = fieldName,
+                        TypeStr       = "byte[]",
+                        Mode          = (AeroBlobNode.Modes) (int) blobAttrData.BlobMode,
+                        RefFieldName  = blobAttrData.KeyName,
+                        PrefixTypeStr = blobAttrData.KeyType,
+                        Parent        = currentNode,
+                        Depth         = currentNode.Depth + 1,
+                        Index         = state.Idx++,
+                        IsNullable    = currentNode.IsNullable
+                    };
+
+                    currentNode.Nodes.Add(blobNode);
+                    currentNode = rootNode;
+                    continue;
                 }
 
                 // Arrays
@@ -404,6 +506,15 @@ namespace Aero.Gen
                 }
                 else if (node is AeroIfNode ifNode) {
                     sb.Append($"❓ If, {ifNode.Statement}");
+                }
+                else if (node is AeroBlobNode blobNode) {
+                    sb.Append($"🧱 Blob, Name: {blobNode.Name}, Mode: {blobNode.Mode}");
+                    if (blobNode.Mode == AeroBlobNode.Modes.LenTypePrefixed) {
+                        sb.Append($" Length prefix type: {blobNode.PrefixTypeStr}");
+                    }
+                    else if (blobNode.Mode == AeroBlobNode.Modes.Ref) {
+                        sb.Append($" Length ref var name: {blobNode.RefFieldName}");
+                    }
                 }
                 else if (node is AeroFieldNode afnode) {
                     sb.Append(

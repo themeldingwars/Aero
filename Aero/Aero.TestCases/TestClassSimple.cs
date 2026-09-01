@@ -196,6 +196,47 @@ namespace Aero.TestCases
         public int Test2;
     }
 
+    [Aero]
+    public partial class TestCaseBlob
+    {
+        public ushort Id;
+        public uint   Flags;
+
+        [AeroBlob]
+        public byte[] Ticket;
+    }
+
+    [Aero]
+    public partial class TestCaseBlobPrefixed
+    {
+        public byte Header;
+
+        [AeroBlob(typeof(ushort))]
+        public byte[] PrefixedBlob;
+
+        [AeroBlob(nameof(BlobLen))]
+        public byte[] RefBlob;
+
+        public int BlobLen;
+
+        public int AfterBlob;
+    }
+
+    [AeroBlock]
+    public struct BlobBlock
+    {
+        public byte Length;
+
+        [AeroBlob(nameof(Length))]
+        public byte[] Blob;
+    }
+
+    [Aero]
+    public partial class TestCaseBlobInBlock
+    {
+        public BlobBlock Block;
+    }
+
     [Aero(AeroGenTypes.View)]
     public partial class ViewTypeTest
     {

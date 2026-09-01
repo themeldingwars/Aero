@@ -521,7 +521,7 @@ namespace Aero.Gen
             var found = false;
             AeroSourceGraphGen.WalkTree(rootNode, node =>
             {
-                if (!found && (node is AeroFieldNode or AeroStringNode))
+                if (!found && (node is AeroFieldNode or AeroStringNode or AeroBlobNode))
                     found = true;
             });
             return found;
@@ -573,6 +573,9 @@ namespace Aero.Gen
             }
             else if (node is AeroStringNode stringNode) {
                 CreateStringReader(stringNode, node);
+            }
+            else if (node is AeroBlobNode blobNode) {
+                CreateBlobReader(blobNode, node);
             }
 
             if (node?.Parent is AeroArrayNode arrayNode                       &&
@@ -745,6 +748,24 @@ namespace Aero.Gen
                 }
             }
 
+            else if (node is AeroBlobNode blobNode) {
+                var name = GetBlobFullName(node);
+                switch (blobNode.Mode) {
+                    case AeroBlobNode.Modes.LenTypePrefixed:
+                        if (TypeHandlers.TryGetValue(blobNode.PrefixTypeStr.ToLower(), out AeroTypeHandler handler)) {
+                            AddLine($"offset += ({handler.Size}) + ({name}.Length); // blob {node.Name}");
+                        }
+                        else {
+                            AddLine(
+                                $"// Oh shit something went wrong and I couldn't read a type of {blobNode.PrefixTypeStr} :<");
+                        }
+
+                        break;
+                    default:
+                        AddLine($"offset += {name}.Length; // blob {node.Name}");
+                        break;
+                }
+            }
             else if (node is AeroBlockNode && node.IsFixedSize()) {
                 AddLine($"offset += {node.GetSize()}; // Fixed size block");
                 node.Nodes.Clear();
@@ -835,7 +856,9 @@ namespace Aero.Gen
             else if (node is AeroStringNode stringNode) {
                 CreateStringWriter(stringNode, node);
             }
-
+            else if (node is AeroBlobNode blobNode) {
+                CreateBlobWriter(blobNode, node);
+            }
 
             if (node.IsNullable && noNullableCheck) {
                 UnIndent();
@@ -914,6 +937,81 @@ namespace Aero.Gen
                             $"offset += {stringNode.Name}Bytes.Length;");
                     }
 
+                    break;
+            }
+        }
+
+        private static string GetBlobFullName(AeroNode node)
+        {
+            var name = node.GetFullName();
+            if (node.Parent?.Parent is {IsNullable: true, IsRoot: false}) {
+                name = $"{node.Parent.GetFullName()}.{node.Name}";
+            }
+
+            return name;
+        }
+
+        private void CreateBlobReader(AeroBlobNode blobNode, AeroNode node)
+        {
+            var name    = GetBlobFullName(node);
+            var lenName = $"{blobNode.Name}BlobLen";
+
+            switch (blobNode.Mode) {
+                case AeroBlobNode.Modes.ReadToEnd:
+                    AddLines(
+                        $"int {lenName} = data.Length - offset;",
+                        $"{name} = new byte[{lenName}];",
+                        $"data.Slice(offset, {lenName}).CopyTo({name});",
+                        $"offset += {lenName};");
+                    break;
+                case AeroBlobNode.Modes.LenTypePrefixed:
+                    if (TypeHandlers.TryGetValue(blobNode.PrefixTypeStr.ToLower(), out AeroTypeHandler handler)) {
+                        AddLines(
+                            $"{blobNode.PrefixTypeStr} {handler.Reader(lenName, null)}",
+                            $"offset += {handler.Size};",
+                            $"{name} = new byte[(int){lenName}];",
+                            $"data.Slice(offset, {name}.Length).CopyTo({name});",
+                            $"offset += {name}.Length;");
+                    }
+                    else {
+                        AddLine(
+                            $"// Oh shit something went wrong and I couldn't read a type of {blobNode.PrefixTypeStr} :<");
+                    }
+
+                    break;
+                case AeroBlobNode.Modes.Ref:
+                    var refName = $"{node.Parent.GetFullName()}.{blobNode.RefFieldName}".TrimStart('.');
+                    AddLines(
+                        $"{name} = new byte[(int){refName}];",
+                        $"data.Slice(offset, {name}.Length).CopyTo({name});",
+                        $"offset += {name}.Length;");
+                    break;
+            }
+        }
+
+        private void CreateBlobWriter(AeroBlobNode blobNode, AeroNode node)
+        {
+            var name = GetBlobFullName(node);
+
+            switch (blobNode.Mode) {
+                case AeroBlobNode.Modes.LenTypePrefixed:
+                    if (TypeHandlers.TryGetValue(blobNode.PrefixTypeStr.ToLower(), out AeroTypeHandler handler)) {
+                        AddWriter($"{name}.Length", blobNode.PrefixTypeStr, blobNode.PrefixTypeStr);
+                        AddLines(
+                            $"{name}.CopyTo(buffer.Slice(offset, {name}.Length));",
+                            $"offset += {name}.Length;");
+                    }
+                    else {
+                        AddLine(
+                            $"// Oh shit something went wrong and I couldn't write a type of {blobNode.PrefixTypeStr} :<");
+                    }
+
+                    break;
+                case AeroBlobNode.Modes.Ref:
+                case AeroBlobNode.Modes.ReadToEnd:
+                    AddLines(
+                        $"{name}.CopyTo(buffer.Slice(offset, {name}.Length));",
+                        $"offset += {name}.Length;");
                     break;
             }
         }
@@ -1010,6 +1108,10 @@ namespace Aero.Gen
 
                 if (node is AeroArrayNode aan) {
                     AddLine($"// Array {aan.Mode}");
+                }
+
+                if (node is AeroBlobNode ban) {
+                    AddLine($"// Blob {ban.Mode}");
                 }
 
                 preNode?.Invoke(node);

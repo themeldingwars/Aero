@@ -56,6 +56,22 @@ namespace Aero.Gen
         public string KeyType;
     }
 
+    public struct AeroBlobInfo
+    {
+        public enum Mode : byte
+        {
+            ReadToEnd,
+            LengthType,
+            RefField
+        }
+
+        public Mode   BlobMode;
+        public bool   IsBlob;
+        public string KeyName;
+        public string KeyType;
+        public string Error;
+    }
+
     public static class AgUtils
     {
         public static string GetClassName(ClassDeclarationSyntax cd) => cd.Identifier.Text;
@@ -198,6 +214,49 @@ namespace Aero.Gen
                     data.ArrayMode = AeroArrayInfo.Mode.LengthType;
                     data.KeyType   = pdt.ToString();
                 }
+            }
+
+            return data;
+        }
+
+        public static AeroBlobInfo GetBlobInfo(FieldDeclarationSyntax fd)
+        {
+            var data = new AeroBlobInfo
+            {
+                IsBlob = true
+            };
+
+            var blobAttr = NodeWithName<AttributeSyntax>(fd, AeroBlobAttribute.Name);
+            if (blobAttr == null) return new AeroBlobInfo {IsBlob = false};
+
+            var numArgs = blobAttr.ArgumentList?.Arguments.Count ?? 0;
+            if (numArgs == 0) {
+                data.BlobMode = AeroBlobInfo.Mode.ReadToEnd;
+            }
+            else if (numArgs == 1) {
+                var arg = blobAttr.ArgumentList.Arguments[0].Expression;
+
+                if (arg is InvocationExpressionSyntax ies && ies.ArgumentList.Arguments.Single().Expression is IdentifierNameSyntax ins) {
+                    data.BlobMode = AeroBlobInfo.Mode.RefField;
+                    data.KeyName  = ins.ToString();
+                }
+                else if (arg is LiteralExpressionSyntax le && le.IsKind(SyntaxKind.StringLiteralExpression)) {
+                    data.BlobMode = AeroBlobInfo.Mode.RefField;
+                    data.KeyName  = GetFieldRefName(arg);
+                }
+                else if (arg is TypeOfExpressionSyntax es && es.Type is PredefinedTypeSyntax pdt) {
+                    data.BlobMode = AeroBlobInfo.Mode.LengthType;
+                    data.KeyType  = pdt.ToString();
+                }
+                else if (arg is LiteralExpressionSyntax) {
+                    data.Error = $"AeroBlob doesn't support a fixed length argument, use [AeroArray(n)] instead";
+                }
+                else {
+                    data.Error = $"AeroBlob argument '{arg}' isn't supported, use no argument, typeof(lengthType) or nameof(field)";
+                }
+            }
+            else {
+                data.Error = $"AeroBlob supports at most one argument, got {numArgs}";
             }
 
             return data;

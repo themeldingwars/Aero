@@ -13,3 +13,8 @@ Aero7 | Aero.Gen | Error | AeroGenerator
 Aero8 | Aero.Gen | Error | AeroGenerator
 Aero9 | Aero.Gen | Error | AeroGenerator
 Aero10 | Aero.Gen | Error | AeroGenerator
+Aero11 | Aero.Gen | Error | AeroGenerator
+Aero12 | Aero.Gen | Error | AeroGenerator
+Aero13 | Aero.Gen | Error | AeroGenerator
+Aero14 | Aero.Gen | Warning | AeroGenerator
+Aero15 | Aero.Gen | Error | AeroGenerator

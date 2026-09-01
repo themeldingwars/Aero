@@ -53,6 +53,14 @@ namespace Aero.Gen
                     return;
                 }
 
+                if (node is AeroBlobNode)
+                {
+                    Context.ReportDiagnostic(
+                        Diagnostic.Create(AeroGenerator.AeroBlobInEncounterViewError, cd.GetLocation(), node.Name)
+                    );
+                    return;
+                }
+
                 var name = node.Name;
                 byte count = 1;
 

@@ -84,6 +84,15 @@ Marks a field as an array, there are a few variants of this.
   * The size given as the arg should be the max size that the array can have, it won't be resized
   * There will be a ``Get[ArrayName]Count`` getter added that has the number of items that were read for this array.
 
+## ``[AeroBlob]``
+Marks a ``byte[]`` field as a blob of raw bytes, the bytes are copied as a whole and parsed elsewhere.
+* ``[AeroBlob]`` : reads all the remaining bytes in the span into the field. If there are no more bytes an empty array is read, so this is safe at the end of a message that may or may not have trailing data.
+  * A read-to-end blob must be the last field in the class, other fields can't be read after it.
+* ``[AeroBlob(typeof(ushort))]`` : reads a little endian value of the given type and reads that number of bytes into the field, similar to ``AeroArray(typeof(...))`` but the bytes are copied raw instead of being read element by element.
+* ``[AeroBlob(nameof(Length))]`` : uses the value of the given already read numeric field as the number of bytes to read.
+
+Blobs must be ``byte[]`` fields. Fields can follow a blob when its length is known (the ``typeof`` and ``nameof`` variants), blobs aren't supported in encounter views.
+
 ## ``[AeroIf]``
 A field with this will be conditionally serialised if the logic passes.
 * ``[AeroIf(nameof(TestValue), 1)]``: Equivalent to ``if (TestValue == 1)`` around the read

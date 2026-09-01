@@ -101,6 +101,41 @@ namespace Aero.Gen
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
+        public static readonly DiagnosticDescriptor AeroBlobNotByteArrayError = new DiagnosticDescriptor(id: "Aero11",
+            title: "AeroBlob on a non byte[] field",
+            messageFormat: "Field '{0}' is marked with [AeroBlob] but is of type '{1}', blobs must be byte[]",
+            category: "Aero.Gen",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor AeroBlobInvalidArgumentError = new DiagnosticDescriptor(id: "Aero12",
+            title: "Invalid AeroBlob argument",
+            messageFormat: "Field '{0}' has an invalid [AeroBlob] argument: {1}",
+            category: "Aero.Gen",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor AeroBlobPositionError = new DiagnosticDescriptor(id: "Aero13",
+            title: "Invalid AeroBlob position",
+            messageFormat: "Field '{0}' has an invalid [AeroBlob] position: {1}",
+            category: "Aero.Gen",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor AeroBlobRefAfterBlobWarning = new DiagnosticDescriptor(id: "Aero14",
+            title: "AeroBlob ref field declared after the blob",
+            messageFormat: "Field '{0}' references '{1}' which is declared after the blob, the blob will read as length 0",
+            category: "Aero.Gen",
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor AeroBlobInEncounterViewError = new DiagnosticDescriptor(id: "Aero15",
+            title: "AeroBlob in an encounter view",
+            messageFormat: "Field '{0}' has [AeroBlob], but blobs aren't supported in encounter views",
+            category: "Aero.Gen",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
     #endregion
 
         public static FieldDeclarationSyntax LastCheckedField;
