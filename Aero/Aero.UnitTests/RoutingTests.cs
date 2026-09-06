@@ -73,7 +73,7 @@ namespace Aero.UnitTests
         [Test]
         public void MatrixTables_RoundTrip()
         {
-            const MatrixVersion version = MatrixVersion.V1;
+            const MatrixVersion version = MatrixVersion.V7;
             const MatrixMessage message = MatrixMessage.Announce;
 
             byte id = MatrixTables.GetMessageId(version, message);
@@ -86,7 +86,7 @@ namespace Aero.UnitTests
         [Test]
         public void MatrixTables_TryGetMessageId_MatchesGetMessageId()
         {
-            const MatrixVersion version = MatrixVersion.V1;
+            const MatrixVersion version = MatrixVersion.V7;
             const MatrixMessage message = MatrixMessage.Announce;
 
             Assert.IsTrue(MatrixTables.TryGetMessageId(version, message, out byte id));
@@ -96,14 +96,14 @@ namespace Aero.UnitTests
         [Test]
         public void MatrixTables_TryGetMessageId_Absent_ReturnsFalse()
         {
-            Assert.IsFalse(MatrixTables.TryGetMessageId(MatrixVersion.V1, MatrixMessage.UpdateDevZoneInfo, out byte id));
+            Assert.IsFalse(MatrixTables.TryGetMessageId(MatrixVersion.V7, MatrixMessage.UpdateDevZoneInfo, out byte id));
             Assert.AreEqual(0, id);
         }
 
         [Test]
         public void MatrixRouting_MsgSrc_SelectsRegisteredHandler()
         {
-            const MatrixVersion version = MatrixVersion.V1;
+            const MatrixVersion version = MatrixVersion.V7;
 
             Assert.IsTrue(AeroRouting.GetNewMessageHandler(version, MsgSrc.Command, MatrixMessage.SuperPing) is MatrixCommandDispatchTestMessage);
             Assert.IsTrue(AeroRouting.GetNewMessageHandler(version, MsgSrc.Message, MatrixMessage.SuperPing) is MatrixMessageDispatchTestMessage);
@@ -114,7 +114,7 @@ namespace Aero.UnitTests
         [Test]
         public void MatrixRouting_WireIds_RespectMsgSrc()
         {
-            const MatrixVersion version = MatrixVersion.V1;
+            const MatrixVersion version = MatrixVersion.V7;
             byte pingId = MatrixTables.GetMessageId(version, MatrixMessage.SuperPing);
             byte pongId = MatrixTables.GetMessageId(version, MatrixMessage.SuperPong);
 
