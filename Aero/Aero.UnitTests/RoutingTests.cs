@@ -9,20 +9,38 @@ using static Aero.Gen.Attributes.AeroMessageIdAttribute;
 namespace Aero.UnitTests
 {
     [Aero]
-    [AeroMessageId(MsgType.Matrix, MsgSrc.Command, MatrixMessage.SuperPing)]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Command, MatrixMessage.SuperPing, MatrixVersion.V7)]
     public partial class MatrixCommandDispatchTestMessage
     {
     }
 
     [Aero]
-    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.SuperPing)]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.SuperPing, MatrixVersion.V7)]
     public partial class MatrixMessageDispatchTestMessage
     {
     }
 
     [Aero]
-    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.SuperPong)]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.SuperPong, MatrixVersion.V7)]
     public partial class MatrixMessagePongDispatchTestMessage
+    {
+    }
+
+    [Aero]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Command, MatrixMessage.EnterZoneAck)]
+    public partial class MatrixV1CommandDispatchTestMessage
+    {
+    }
+
+    [Aero]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.EnterZoneAck)]
+    public partial class MatrixV1MessageDispatchTestMessage
+    {
+    }
+
+    [Aero]
+    [AeroMessageId(MsgType.Matrix, MsgSrc.Message, MatrixMessage.EnterZone)]
+    public partial class MatrixV1MessageEnterZoneDispatchTestMessage
     {
     }
 
@@ -114,14 +132,14 @@ namespace Aero.UnitTests
         [Test]
         public void MatrixRouting_WireIds_RespectMsgSrc()
         {
-            const MatrixVersion version = MatrixVersion.V7;
-            byte pingId = MatrixTables.GetMessageId(version, MatrixMessage.SuperPing);
-            byte pongId = MatrixTables.GetMessageId(version, MatrixMessage.SuperPong);
+            const MatrixVersion version = MatrixVersion.V1;
+            byte ezaId = MatrixTables.GetMessageId(version, MatrixMessage.EnterZoneAck);
+            byte ezId = MatrixTables.GetMessageId(version, MatrixMessage.EnterZone);
 
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Command, pingId) is MatrixCommandDispatchTestMessage);
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Message, pingId) is MatrixMessageDispatchTestMessage);
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Message, pongId) is MatrixMessagePongDispatchTestMessage);
-            Assert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Command, pongId));
+            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Command, ezaId) is MatrixV1CommandDispatchTestMessage);
+            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Message, ezaId) is MatrixV1MessageDispatchTestMessage);
+            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Message, ezId) is MatrixV1MessageEnterZoneDispatchTestMessage);
+            Assert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Command, ezId));
         }
 
         [Test]
