@@ -2,32 +2,58 @@ name: .NET
 
 on:
   push:
-    branches:
-      - '*'
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   id-token: write
   contents: write
 
+defaults:
+  run:
+    shell: bash
+    working-directory: ./Aero
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
 jobs:
   build:
+    name: ${{ matrix.platform.name }} ${{ matrix.dotnet.name }}
+    runs-on: ${{ matrix.platform.os }}
 
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./Aero
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+        - { name: Linux, os: ubuntu-24.04 }
+        - { name: Windows, os: windows-2025-vs2026 }
+        dotnet:
+        - { name: .NET 8, version: '8.0.x' }
 
     steps:
-    - uses: actions/checkout@v7
+    - name: Checkout
+      uses: actions/checkout@v7
       with:
         persist-credentials: false
+        fetch-depth: 0
         submodules: recursive
-    - name: Setup .NET
+
+    - name: Setup ${{ matrix.dotnet.name }} SDK
+      id: setup-dotnet
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: ${{ matrix.dotnet.version }}
+    - name: Enforce SDK Version
+      env:
+        DOTNET_VERSION: ${{ steps.setup-dotnet.outputs.dotnet-version }}
+      run: dotnet new globaljson --sdk-version "$DOTNET_VERSION" --force
+    - name: Verify SDK Installation
+      run: dotnet --info
+
     - name: Restore dependencies
       run: dotnet restore
     - name: Regenerate protocol files
@@ -40,28 +66,32 @@ jobs:
       run: dotnet test --no-build --verbosity normal -c Release
 
     - name: NuGet Login
-      if: github.event_name != 'pull_request'
+      if: matrix.platform.name == 'Linux' && startsWith(github.ref, 'refs/tags/v')
       uses: NuGet/login@v1
       id: login
       with:
         user: TMW
-    - name: Publish FauFau NuGet
-      if: github.event_name != 'pull_request'
+    - name: Publish Aero.Gen NuGet
+      if: matrix.platform.name == 'Linux' && startsWith(github.ref, 'refs/tags/v')
       env:
         NUGET_DIRECTORY: Aero.Gen/bin/Release
         NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
-      run: dotnet nuget push $NUGET_DIRECTORY/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+      run: dotnet nuget push "$NUGET_DIRECTORY"/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
     - name: Run benchmarks
+      if: matrix.platform.name == 'Linux'
       run: cd Aero.UnitTests && dotnet run -c Release
-    - id: get-comment-body
+    - name: Get comment body
+      if: matrix.platform.name == 'Linux'
+      id: get-comment-body
       run: |
         body=$(cat Aero.UnitTests/BenchmarkDotNet.Artifacts/results/Aero.UnitTests.Benchmarks.Reading-report-github.md)
         body="${body//'%'/'%25'}"
         body="${body//$'\n'/'%0A'}"
-        body="${body//$'\r'/'%0D'}" 
-        echo ::set-output name=body::$body
+        body="${body//$'\r'/'%0D'}"
+        echo "body=$body" >> "$GITHUB_OUTPUT"
     - name: Commit Comment
+      if: matrix.platform.name == 'Linux'
       uses: peter-evans/commit-comment@v4
       with:
           body: |
@@ -69,13 +99,14 @@ jobs:
             ${{ steps.get-comment-body.outputs.body }}
 
     - name: Download previous benchmark data
+      if: matrix.platform.name == 'Linux'
       uses: actions/cache@v6
       with:
         path: ./cache
         key: ${{ runner.os }}-benchmark
     - name: Store benchmark result
+      if: matrix.platform.name == 'Linux' && startsWith(github.ref, 'refs/tags/v')
       uses: benchmark-action/github-action-benchmark@v1
-      if: github.event_name != 'pull_request'
       with:
         name: Benchmark.Net Benchmark
         tool: 'benchmarkdotnet'
