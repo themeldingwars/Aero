@@ -5,14 +5,16 @@
         <LangVersion>9</LangVersion>
 
         <PackageId>Aero.Gen</PackageId>
-        <Authors></Authors>
-        <Company>The Melding Wars</Company>
+        <Authors>The Melding Wars</Authors>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Description>A source genrator to serialise class and struct with minimal attributes efficently</Description>
+        <Description>A source generator to serialize classes and structs with minimal attributes efficiently</Description>
         <PackageProjectUrl>https://github.com/themeldingwars/Aero</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/themeldingwars/Aero</RepositoryUrl>
-        <PackageLicenseFile>LICENSE</PackageLicenseFile>
-        <PackageTags>TMW, Serialisation, Source Genrator</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>readme.md</PackageReadmeFile>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PackageTags>TMW;serialization;source-generator</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
