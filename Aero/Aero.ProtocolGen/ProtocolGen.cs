@@ -299,16 +299,11 @@ namespace Aero.ProtocolGen
             foreach (var file in Directory.GetFiles(dumpsDir, "*.json", SearchOption.AllDirectories).OrderBy(x => x, StringComparer.Ordinal))
             {
                 var rel = Path.GetRelativePath(dumpsDir, file).Replace('\\', '/');
+                var content = NormaliseNewlines(File.ReadAllBytes(file));
                 using var sha = SHA256.Create();
                 var relBytes = Encoding.UTF8.GetBytes(rel);
                 sha.TransformBlock(relBytes, 0, relBytes.Length, null, 0);
-                using (var fs = File.OpenRead(file))
-                {
-                    var buf = new byte[65536];
-                    int n;
-                    while ((n = fs.Read(buf, 0, buf.Length)) > 0)
-                        sha.TransformBlock(buf, 0, n, null, 0);
-                }
+                sha.TransformBlock(content, 0, content.Length, null, 0);
                 sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
                 perFile.Add(Convert.ToHexString(sha.Hash));
             }
@@ -318,6 +313,19 @@ namespace Aero.ProtocolGen
             sha2.TransformBlock(joined, 0, joined.Length, null, 0);
             sha2.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
             return Convert.ToHexString(sha2.Hash);
+        }
+
+        // Normalize new lines to LF before hasing, so the hash is identical on all platforms.
+        static byte[] NormaliseNewlines(byte[] content)
+        {
+            var normalised = new byte[content.Length];
+            var len = 0;
+            for (var i = 0; i < content.Length; i++)
+            {
+                if (content[i] == (byte)'\r' && i + 1 < content.Length && content[i + 1] == (byte)'\n') continue;
+                normalised[len++] = content[i];
+            }
+            return len == content.Length ? content : normalised[..len];
         }
 
         static void Write(string outDir, string fileName, string content, GenerationResult gen)
