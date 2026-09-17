@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using Aero.Protocol;
 using NUnit.Framework;
+using NUnit.Framework.Legacy;
 
 namespace Aero.UnitTests
 {
@@ -16,9 +17,9 @@ namespace Aero.UnitTests
 
         static void AssertVersionsChronological(ushort[] raw, string[] firstBuild)
         {
-            Assert.AreEqual(raw.Length, firstBuild.Length);
+            ClassicAssert.AreEqual(raw.Length, firstBuild.Length);
             for (int i = 1; i < firstBuild.Length; i++)
-                Assert.LessOrEqual(DateTime.Parse(firstBuild[i - 1]), DateTime.Parse(firstBuild[i]),
+                ClassicAssert.LessOrEqual(DateTime.Parse(firstBuild[i - 1]), DateTime.Parse(firstBuild[i]),
                     $"version {i + 1} first build is earlier than version {i}'s, versions are not in chronological order");
         }
 
