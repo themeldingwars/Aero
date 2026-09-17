@@ -81,23 +81,6 @@ jobs:
     - name: Run benchmarks
       if: matrix.platform.name == 'Linux'
       run: cd Aero.UnitTests && dotnet run -c Release
-    - name: Get comment body
-      if: matrix.platform.name == 'Linux'
-      id: get-comment-body
-      run: |
-        body=$(cat Aero.UnitTests/BenchmarkDotNet.Artifacts/results/Aero.UnitTests.Benchmarks.Reading-report-github.md)
-        body="${body//'%'/'%25'}"
-        body="${body//$'\n'/'%0A'}"
-        body="${body//$'\r'/'%0D'}"
-        echo "body=$body" >> "$GITHUB_OUTPUT"
-    - name: Commit Comment
-      if: matrix.platform.name == 'Linux'
-      uses: peter-evans/commit-comment@v4
-      with:
-          body: |
-            Benchmark result (use as a guide):
-            ${{ steps.get-comment-body.outputs.body }}
-
     - name: Download previous benchmark data
       if: matrix.platform.name == 'Linux'
       uses: actions/cache@v6
