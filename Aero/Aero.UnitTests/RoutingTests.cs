@@ -4,6 +4,7 @@ using Aero.Gen;
 using Aero.Gen.Attributes;
 using Aero.Protocol;
 using NUnit.Framework;
+using NUnit.Framework.Legacy;
 using static Aero.Gen.Attributes.AeroMessageIdAttribute;
 
 namespace Aero.UnitTests
@@ -95,10 +96,10 @@ namespace Aero.UnitTests
             const MatrixMessage message = MatrixMessage.Announce;
 
             byte id = MatrixTables.GetMessageId(version, message);
-            Assert.Greater(id, (byte)0, $"MatrixMessage.{message} should exist in {version}");
-            Assert.AreEqual((int)message, MatrixTables.FindMessage(version, id));
-            Assert.AreEqual(MatrixMessage.Announce, AeroRouting.GetMatrixMessage(version, id).Value);
-            Assert.Less(MatrixTables.FindMessage(version, 0), 0);
+            ClassicAssert.Greater(id, (byte)0, $"MatrixMessage.{message} should exist in {version}");
+            ClassicAssert.AreEqual((int)message, MatrixTables.FindMessage(version, id));
+            ClassicAssert.AreEqual(MatrixMessage.Announce, AeroRouting.GetMatrixMessage(version, id).Value);
+            ClassicAssert.Less(MatrixTables.FindMessage(version, 0), 0);
         }
 
         [Test]
@@ -107,15 +108,15 @@ namespace Aero.UnitTests
             const MatrixVersion version = MatrixVersion.V7;
             const MatrixMessage message = MatrixMessage.Announce;
 
-            Assert.IsTrue(MatrixTables.TryGetMessageId(version, message, out byte id));
-            Assert.AreEqual(MatrixTables.GetMessageId(version, message), id);
+            ClassicAssert.IsTrue(MatrixTables.TryGetMessageId(version, message, out byte id));
+            ClassicAssert.AreEqual(MatrixTables.GetMessageId(version, message), id);
         }
 
         [Test]
         public void MatrixTables_TryGetMessageId_Absent_ReturnsFalse()
         {
-            Assert.IsFalse(MatrixTables.TryGetMessageId(MatrixVersion.V7, MatrixMessage.UpdateDevZoneInfo, out byte id));
-            Assert.AreEqual(0, id);
+            ClassicAssert.IsFalse(MatrixTables.TryGetMessageId(MatrixVersion.V7, MatrixMessage.UpdateDevZoneInfo, out byte id));
+            ClassicAssert.AreEqual(0, id);
         }
 
         [Test]
@@ -123,10 +124,10 @@ namespace Aero.UnitTests
         {
             const MatrixVersion version = MatrixVersion.V7;
 
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(version, MsgSrc.Command, MatrixMessage.SuperPing) is MatrixCommandDispatchTestMessage);
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(version, MsgSrc.Message, MatrixMessage.SuperPing) is MatrixMessageDispatchTestMessage);
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(version, MsgSrc.Message, MatrixMessage.SuperPong) is MatrixMessagePongDispatchTestMessage);
-            Assert.IsNull(AeroRouting.GetNewMessageHandler(version, MsgSrc.Command, MatrixMessage.SuperPong));
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(version, MsgSrc.Command, MatrixMessage.SuperPing) is MatrixCommandDispatchTestMessage);
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(version, MsgSrc.Message, MatrixMessage.SuperPing) is MatrixMessageDispatchTestMessage);
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(version, MsgSrc.Message, MatrixMessage.SuperPong) is MatrixMessagePongDispatchTestMessage);
+            ClassicAssert.IsNull(AeroRouting.GetNewMessageHandler(version, MsgSrc.Command, MatrixMessage.SuperPong));
         }
 
         [Test]
@@ -136,10 +137,10 @@ namespace Aero.UnitTests
             byte ezaId = MatrixTables.GetMessageId(version, MatrixMessage.EnterZoneAck);
             byte ezId = MatrixTables.GetMessageId(version, MatrixMessage.EnterZone);
 
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Command, ezaId) is MatrixV1CommandDispatchTestMessage);
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Message, ezaId) is MatrixV1MessageDispatchTestMessage);
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Message, ezId) is MatrixV1MessageEnterZoneDispatchTestMessage);
-            Assert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Command, ezId));
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Command, ezaId) is MatrixV1CommandDispatchTestMessage);
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Message, ezaId) is MatrixV1MessageDispatchTestMessage);
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Message, ezId) is MatrixV1MessageEnterZoneDispatchTestMessage);
+            ClassicAssert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.Matrix, MsgSrc.Command, ezId));
         }
 
         [Test]
@@ -148,13 +149,13 @@ namespace Aero.UnitTests
             var ordinal = (int)GssMessage.RequestLogout;
             var (version, typecode, id) = FindAvailable(GssTables.Ns.Root, GssTables.Kind.Message, ordinal);
 
-            Assert.AreEqual(GssTables.Ns.Root, GssTables.FindNamespace(version, typecode, GssTables.Kind.Message));
-            Assert.AreEqual(ordinal, GssTables.FindMessage(version, typecode, GssTables.Kind.Message, id));
-            Assert.AreEqual(ordinal, AeroRouting.GetGssMessageOrdinal(version, typecode, GssTables.Kind.Message, id));
+            ClassicAssert.AreEqual(GssTables.Ns.Root, GssTables.FindNamespace(version, typecode, GssTables.Kind.Message));
+            ClassicAssert.AreEqual(ordinal, GssTables.FindMessage(version, typecode, GssTables.Kind.Message, id));
+            ClassicAssert.AreEqual(ordinal, AeroRouting.GetGssMessageOrdinal(version, typecode, GssTables.Kind.Message, id));
 
             var (typecode2, id2) = AeroRouting.GetGssMessageId(version, GssTables.Ns.Root, GssTables.Kind.Message, ordinal);
-            Assert.AreEqual(typecode, typecode2);
-            Assert.AreEqual(id, id2);
+            ClassicAssert.AreEqual(typecode, typecode2);
+            ClassicAssert.AreEqual(id, id2);
         }
 
         [Test]
@@ -163,12 +164,12 @@ namespace Aero.UnitTests
             var ordinal = (int)GssCharacterMessage.CharacterLoaded;
             var (version, typecode, id) = FindAvailable(GssTables.Ns.Character, GssTables.Kind.Message, ordinal);
 
-            Assert.AreEqual(GssTables.Ns.Character, GssTables.FindNamespace(version, typecode, GssTables.Kind.Message));
-            Assert.AreEqual(ordinal, GssTables.FindMessage(version, typecode, GssTables.Kind.Message, id));
+            ClassicAssert.AreEqual(GssTables.Ns.Character, GssTables.FindNamespace(version, typecode, GssTables.Kind.Message));
+            ClassicAssert.AreEqual(ordinal, GssTables.FindMessage(version, typecode, GssTables.Kind.Message, id));
 
             var (typecode2, id2) = AeroRouting.GetGssMessageId(version, GssTables.Ns.Character, GssTables.Kind.Message, ordinal);
-            Assert.AreEqual(typecode, typecode2);
-            Assert.AreEqual(id, id2);
+            ClassicAssert.AreEqual(typecode, typecode2);
+            ClassicAssert.AreEqual(id, id2);
         }
 
         [Test]
@@ -177,12 +178,12 @@ namespace Aero.UnitTests
             var ordinal = (int)GssCharacterCommand.ActivateAbility;
             var (version, typecode, id) = FindAvailable(GssTables.Ns.Character, GssTables.Kind.Command, ordinal);
 
-            Assert.AreEqual(GssTables.Ns.Character, GssTables.FindNamespace(version, typecode, GssTables.Kind.Command));
-            Assert.AreEqual(ordinal, GssTables.FindMessage(version, typecode, GssTables.Kind.Command, id));
+            ClassicAssert.AreEqual(GssTables.Ns.Character, GssTables.FindNamespace(version, typecode, GssTables.Kind.Command));
+            ClassicAssert.AreEqual(ordinal, GssTables.FindMessage(version, typecode, GssTables.Kind.Command, id));
 
             var (typecode2, id2) = AeroRouting.GetGssMessageId(version, GssTables.Ns.Character, GssTables.Kind.Command, ordinal);
-            Assert.AreEqual(typecode, typecode2);
-            Assert.AreEqual(id, id2);
+            ClassicAssert.AreEqual(typecode, typecode2);
+            ClassicAssert.AreEqual(id, id2);
         }
 
         [Test]
@@ -191,9 +192,9 @@ namespace Aero.UnitTests
             var ordinal = (int)GssCharacterMessage.CharacterLoaded;
             var (version, typecode, id) = FindAvailable(GssTables.Ns.Character, GssTables.Kind.Message, ordinal);
 
-            Assert.IsTrue(GssTables.TryGetWireIds(version, GssCharacterMessage.CharacterLoaded, out byte wireTypecode, out byte wireMessageId));
-            Assert.AreEqual(typecode, wireTypecode);
-            Assert.AreEqual(id, wireMessageId);
+            ClassicAssert.IsTrue(GssTables.TryGetWireIds(version, GssCharacterMessage.CharacterLoaded, out byte wireTypecode, out byte wireMessageId));
+            ClassicAssert.AreEqual(typecode, wireTypecode);
+            ClassicAssert.AreEqual(id, wireMessageId);
         }
 
         [Test]
@@ -202,9 +203,9 @@ namespace Aero.UnitTests
             var ordinal = (int)GssCharacterCommand.ActivateAbility;
             var (version, typecode, id) = FindAvailable(GssTables.Ns.Character, GssTables.Kind.Command, ordinal);
 
-            Assert.IsTrue(GssTables.TryGetWireIds(version, GssCharacterCommand.ActivateAbility, out byte wireTypecode, out byte wireMessageId));
-            Assert.AreEqual(typecode, wireTypecode);
-            Assert.AreEqual(id, wireMessageId);
+            ClassicAssert.IsTrue(GssTables.TryGetWireIds(version, GssCharacterCommand.ActivateAbility, out byte wireTypecode, out byte wireMessageId));
+            ClassicAssert.AreEqual(typecode, wireTypecode);
+            ClassicAssert.AreEqual(id, wireMessageId);
         }
 
         [Test]
@@ -213,25 +214,25 @@ namespace Aero.UnitTests
             var ordinal = (int)GssCharacterView.ObserverView;
             var (version, typecode) = FindAvailableView(GssTables.Ns.Character, ordinal);
 
-            Assert.IsTrue(GssTables.TryGetWireIds(version, GssCharacterView.ObserverView, out byte wireTypecode, out byte wireMessageId));
-            Assert.AreEqual(typecode, wireTypecode);
-            Assert.AreEqual(0, wireMessageId);
+            ClassicAssert.IsTrue(GssTables.TryGetWireIds(version, GssCharacterView.ObserverView, out byte wireTypecode, out byte wireMessageId));
+            ClassicAssert.AreEqual(typecode, wireTypecode);
+            ClassicAssert.AreEqual(0, wireMessageId);
         }
 
         [Test]
         public void GssTables_TryGetWireIds_UnknownEnum_ReturnsFalse()
         {
-            Assert.IsFalse(GssTables.TryGetWireIds(GssVersion.V1, 123, out byte typecode, out byte messageId));
-            Assert.AreEqual(0, typecode);
-            Assert.AreEqual(0, messageId);
+            ClassicAssert.IsFalse(GssTables.TryGetWireIds(GssVersion.V1, 123, out byte typecode, out byte messageId));
+            ClassicAssert.AreEqual(0, typecode);
+            ClassicAssert.AreEqual(0, messageId);
         }
 
         [Test]
         public void GssTables_UnknownTypecode_IsUnknown()
         {
-            Assert.AreEqual(GssTables.Ns.Unknown, GssTables.FindNamespace(GssVersion.V1, 255, GssTables.Kind.Message));
-            Assert.AreEqual(GssTables.Ns.Unknown, GssTables.FindNamespace(GssVersion.V1, 255, GssTables.Kind.Command));
-            Assert.Less(GssTables.FindMessage(GssVersion.V1, 255, GssTables.Kind.Message, 1), 0);
+            ClassicAssert.AreEqual(GssTables.Ns.Unknown, GssTables.FindNamespace(GssVersion.V1, 255, GssTables.Kind.Message));
+            ClassicAssert.AreEqual(GssTables.Ns.Unknown, GssTables.FindNamespace(GssVersion.V1, 255, GssTables.Kind.Command));
+            ClassicAssert.Less(GssTables.FindMessage(GssVersion.V1, 255, GssTables.Kind.Message, 1), 0);
         }
 
         [Test]
@@ -240,14 +241,14 @@ namespace Aero.UnitTests
             var ordinal = (int)GssCharacterView.ObserverView;
             var (version, typecode) = FindAvailableView(GssTables.Ns.Character, ordinal);
 
-            Assert.AreEqual(ordinal, GssTables.FindView(version, typecode));
-            Assert.IsTrue(GssTables.TryFindView(version, typecode, out int ns, out int foundOrdinal));
-            Assert.AreEqual(GssTables.Ns.Character, ns);
-            Assert.AreEqual(ordinal, foundOrdinal);
+            ClassicAssert.AreEqual(ordinal, GssTables.FindView(version, typecode));
+            ClassicAssert.IsTrue(GssTables.TryFindView(version, typecode, out int ns, out int foundOrdinal));
+            ClassicAssert.AreEqual(GssTables.Ns.Character, ns);
+            ClassicAssert.AreEqual(ordinal, foundOrdinal);
 
-            Assert.IsFalse(GssTables.TryFindView(version, 255, out int unknownNs, out int unknownOrdinal));
-            Assert.AreEqual(GssTables.Ns.Unknown, unknownNs);
-            Assert.AreEqual(-1, unknownOrdinal);
+            ClassicAssert.IsFalse(GssTables.TryFindView(version, 255, out int unknownNs, out int unknownOrdinal));
+            ClassicAssert.AreEqual(GssTables.Ns.Unknown, unknownNs);
+            ClassicAssert.AreEqual(-1, unknownOrdinal);
         }
 
         [Test]
@@ -256,7 +257,7 @@ namespace Aero.UnitTests
             var (version, typecode) = FindAvailableView(GssTables.Ns.Character, (int)GssCharacterView.BaseController);
             AeroRouting.CurrentGssVersion = version;
 
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 1, typecode) is GssViewDispatchTestController);
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 1, typecode) is GssViewDispatchTestController);
         }
 
         [Test]
@@ -265,8 +266,8 @@ namespace Aero.UnitTests
             var (version, typecode) = FindAvailableView(GssTables.Ns.Character, (int)GssCharacterView.BaseController);
             AeroRouting.CurrentGssVersion = version;
 
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 1, typecode) is GssViewDispatchTestController);
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 42, typecode) is GssViewDispatchTestController);
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 1, typecode) is GssViewDispatchTestController);
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 42, typecode) is GssViewDispatchTestController);
         }
 
         [Test]
@@ -274,14 +275,14 @@ namespace Aero.UnitTests
         {
             var earlyTypecode = GssTables.GetMessageId(GssVersion.V10, GssTables.Ns.Character, GssTables.Kind.View, (int)GssCharacterView.ObserverView);
             var lateTypecode = GssTables.GetMessageId(GssVersion.V40, GssTables.Ns.Character, GssTables.Kind.View, (int)GssCharacterView.ObserverView);
-            Assert.Greater(earlyTypecode, (byte)0);
-            Assert.Greater(lateTypecode, (byte)0);
+            ClassicAssert.Greater(earlyTypecode, (byte)0);
+            ClassicAssert.Greater(lateTypecode, (byte)0);
 
             AeroRouting.CurrentGssVersion = GssVersion.V10;
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 0, earlyTypecode) is GssViewDispatchTestViewEarly);
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 0, earlyTypecode) is GssViewDispatchTestViewEarly);
 
             AeroRouting.CurrentGssVersion = GssVersion.V40;
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 0, lateTypecode) is GssViewDispatchTestViewLate);
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 0, lateTypecode) is GssViewDispatchTestViewLate);
         }
 
         [Test]
@@ -290,14 +291,14 @@ namespace Aero.UnitTests
             var (version, typecode) = FindAvailableView(GssTables.Ns.Character, (int)GssCharacterView.BaseController);
             AeroRouting.CurrentGssVersion = version;
 
-            Assert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Command, 1, typecode));
+            ClassicAssert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Command, 1, typecode));
         }
 
         [Test]
         public void GssViewRouting_UnknownTypecode_ReturnsNull()
         {
             AeroRouting.CurrentGssVersion = GssVersion.V1;
-            Assert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 1, 255));
+            ClassicAssert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 1, 255));
         }
 
         [Test]
@@ -306,14 +307,14 @@ namespace Aero.UnitTests
             var (version, typecode) = FindAvailableView(GssTables.Ns.Character, (int)GssCharacterView.CombatView);
             AeroRouting.CurrentGssVersion = version;
 
-            Assert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 1, typecode));
+            ClassicAssert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, 1, typecode));
         }
 
         [Test]
         public void GssViewRouting_DirectEnumOverload()
         {
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Message, GssCharacterView.BaseController) is GssViewDispatchTestController);
-            Assert.IsNull(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Command, GssCharacterView.BaseController));
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Message, GssCharacterView.BaseController) is GssViewDispatchTestController);
+            ClassicAssert.IsNull(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Command, GssCharacterView.BaseController));
         }
 
         [Test]
@@ -321,16 +322,16 @@ namespace Aero.UnitTests
         {
             var (version, viewTypecode) = FindAvailableView(GssTables.Ns.Character, (int)GssCharacterView.CombatView);
             var messageId = GssTables.GetMessageId(version, GssTables.Ns.Character, GssTables.Kind.Message, (int)GssCharacterMessage.Killed);
-            Assert.Greater(messageId, (byte)0);
+            ClassicAssert.Greater(messageId, (byte)0);
 
-            Assert.IsTrue(GssTables.TryGetWireIds(version, GssCharacterView.CombatView, GssCharacterMessage.Killed, out byte wireTypecode, out byte wireMessageId));
-            Assert.AreEqual(viewTypecode, wireTypecode);
-            Assert.AreEqual(messageId, wireMessageId);
+            ClassicAssert.IsTrue(GssTables.TryGetWireIds(version, GssCharacterView.CombatView, GssCharacterMessage.Killed, out byte wireTypecode, out byte wireMessageId));
+            ClassicAssert.AreEqual(viewTypecode, wireTypecode);
+            ClassicAssert.AreEqual(messageId, wireMessageId);
 
             // The view-less lookup returns the namespace route's typecode for the same message.
-            Assert.IsTrue(GssTables.TryGetWireIds(version, GssCharacterMessage.Killed, out byte nsTypecode, out byte nsMessageId));
-            Assert.AreEqual(messageId, nsMessageId);
-            Assert.AreNotEqual(viewTypecode, nsTypecode);
+            ClassicAssert.IsTrue(GssTables.TryGetWireIds(version, GssCharacterMessage.Killed, out byte nsTypecode, out byte nsMessageId));
+            ClassicAssert.AreEqual(messageId, nsMessageId);
+            ClassicAssert.AreNotEqual(viewTypecode, nsTypecode);
         }
 
         [Test]
@@ -339,7 +340,7 @@ namespace Aero.UnitTests
             var (version, viewTypecode) = FindAvailableView(GssTables.Ns.Character, (int)GssCharacterView.CombatView);
             var messageId = GssTables.GetMessageId(version, GssTables.Ns.Character, GssTables.Kind.Message, (int)GssCharacterMessage.Killed);
 
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, messageId, viewTypecode) is GssViewRoutedKilledViaCombatView);
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, messageId, viewTypecode) is GssViewRoutedKilledViaCombatView);
         }
 
         [Test]
@@ -348,10 +349,10 @@ namespace Aero.UnitTests
             // Killed is registered via the CombatView route, so the plain Character namespace route must not dispatch it.
             var nsTypecode = GssTables.GetNamespaceTypecode(GssVersion.V1, GssTables.Ns.Character);
             var messageId = GssTables.GetMessageId(GssVersion.V1, GssTables.Ns.Character, GssTables.Kind.Message, (int)GssCharacterMessage.Killed);
-            Assert.Greater(nsTypecode, (byte)0);
-            Assert.Greater(messageId, (byte)0);
+            ClassicAssert.Greater(nsTypecode, (byte)0);
+            ClassicAssert.Greater(messageId, (byte)0);
 
-            Assert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, messageId, nsTypecode));
+            ClassicAssert.IsNull(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, messageId, nsTypecode));
         }
 
         [Test]
@@ -361,18 +362,18 @@ namespace Aero.UnitTests
             var lateTypecode = GssTables.GetMessageId(GssVersion.V40, GssTables.Ns.Character, GssTables.Kind.View, (int)GssCharacterView.ObserverView);
             var earlyId = GssTables.GetMessageId(GssVersion.V20, GssTables.Ns.Character, GssTables.Kind.Message, (int)GssCharacterMessage.CharacterLoaded);
             var lateId = GssTables.GetMessageId(GssVersion.V40, GssTables.Ns.Character, GssTables.Kind.Message, (int)GssCharacterMessage.CharacterLoaded);
-            Assert.Greater(earlyTypecode, (byte)0);
-            Assert.Greater(lateTypecode, (byte)0);
-            Assert.Greater(earlyId, (byte)0);
-            Assert.Greater(lateId, (byte)0);
+            ClassicAssert.Greater(earlyTypecode, (byte)0);
+            ClassicAssert.Greater(lateTypecode, (byte)0);
+            ClassicAssert.Greater(earlyId, (byte)0);
+            ClassicAssert.Greater(lateId, (byte)0);
 
             try
             {
                 AeroRouting.CurrentGssVersion = GssVersion.V20;
-                Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, earlyId, earlyTypecode) is GssViewRoutedLoadedEarly);
+                ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, earlyId, earlyTypecode) is GssViewRoutedLoadedEarly);
 
                 AeroRouting.CurrentGssVersion = GssVersion.V40;
-                Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, lateId, lateTypecode) is GssViewRoutedLoadedLate);
+                ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Message, lateId, lateTypecode) is GssViewRoutedLoadedLate);
             }
             finally
             {
@@ -385,23 +386,23 @@ namespace Aero.UnitTests
         {
             var (version, viewTypecode) = FindAvailableView(GssTables.Ns.Character, (int)GssCharacterView.BaseController);
             var commandId = GssTables.GetMessageId(version, GssTables.Ns.Character, GssTables.Kind.Command, (int)GssCharacterCommand.ActivateAbility);
-            Assert.Greater(commandId, (byte)0);
+            ClassicAssert.Greater(commandId, (byte)0);
 
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Command, commandId, viewTypecode) is GssViewRoutedActivateAbilityViaBaseController);
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(MsgType.GSS, MsgSrc.Command, commandId, viewTypecode) is GssViewRoutedActivateAbilityViaBaseController);
         }
 
         [Test]
         public void GssViewRoutedMessage_DirectOverload()
         {
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Message, GssCharacterMessage.Killed, GssCharacterView.CombatView) is GssViewRoutedKilledViaCombatView);
-            Assert.IsNull(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Message, GssCharacterMessage.Killed));
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Message, GssCharacterMessage.Killed, GssCharacterView.CombatView) is GssViewRoutedKilledViaCombatView);
+            ClassicAssert.IsNull(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Message, GssCharacterMessage.Killed));
         }
 
         [Test]
         public void GssViewRoutedCommand_DirectOverload()
         {
-            Assert.IsTrue(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Command, GssCharacterCommand.ActivateAbility, GssCharacterView.BaseController) is GssViewRoutedActivateAbilityViaBaseController);
-            Assert.IsNull(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Command, GssCharacterCommand.ActivateAbility));
+            ClassicAssert.IsTrue(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Command, GssCharacterCommand.ActivateAbility, GssCharacterView.BaseController) is GssViewRoutedActivateAbilityViaBaseController);
+            ClassicAssert.IsNull(AeroRouting.GetNewMessageHandler(GssVersion.V1, MsgSrc.Command, GssCharacterCommand.ActivateAbility));
         }
 
         static (GssVersion Version, byte Typecode, byte Id) FindAvailable(int nsIndex, int kind, int ordinal)
