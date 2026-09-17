@@ -23,6 +23,12 @@
         "TMW.Bitter"
       ],
       "minimumReleaseAge": "0 days"
+    },
+    {
+      "description": "Aero.Gen's Roslyn version sets the minimum compiler for consumers, so only bump it on purpose",
+      "matchFileNames": ["Aero/Aero.Gen/Aero.Gen.csproj"],
+      "matchPackageNames": ["Microsoft.CodeAnalysis.CSharp"],
+      "enabled": false
     }
   ]
 }

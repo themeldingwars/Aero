@@ -1,6 +1,5 @@
 ﻿using System;
 using Aero.Gen.Attributes;
-using NuGet.Frameworks;
 using NUnit.Framework;
 
 namespace Aero.UnitTests
