@@ -127,9 +127,12 @@ The ops options are:
 ## ``[AeroString]``
 Strings should be marked with this attribute to be parsed correctly.
 * ``[AeroString(nameof(LenghtField))]``: Similar to the array attribute you can pass the name of a already defined numeric value to be used as the length of the string
-* ``[AeroString(typeof(byte))]``: Marks the string as length prefixed with the given type, eg will read a byte and then that number of chars into the string
-* ``[AeroString(10)]``: Read a fixed size string, in this case will read 10 chars as a string
+* ``[AeroString(typeof(byte))]``: Marks the string as length prefixed with the given type, eg will read a byte and then that number of bytes into the string
+* ``[AeroString(10)]``: Read a fixed size string, in this case will read 10 bytes as a string
 * ``[AeroString]``: Defines a null terminated string, will read until it gets a ``0x00`` or it reaches the end of the span.
+    * Packing always writes the ``0x00``, a string that ran to the end of the data without one packs one byte longer. Use a read-to-end ``[AeroBlob]`` for text that isn't terminated.
+
+Strings are UTF-8, lengths and prefixes count bytes, not characters. A fixed size string is padded with ``0x00`` or cut off to its size when packing.
 
 ## ``[AeroSdb]``
 * ``[AeroSdb("Table Name", "Column Name")]``: Mark a field as having a value from the sdb table and column given.
