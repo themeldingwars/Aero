@@ -363,8 +363,23 @@ namespace Aero.Gen
                     continue;
                 }
 
+                // Attributes that would be ignored on this type, they hide layout mistakes
+                var isArrayType = typeStr?.EndsWith("[]") ?? false;
+                if (!isArrayType && AgUtils.GetArrayInfo(field).IsArray) {
+                    snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.AttributeOnWrongTypeError,
+                        field.GetLocation(), fieldName, typeStr, AeroArrayAttribute.Name, "arrays"));
+                    break;
+                }
+
+                var elementTypeSymbol = typeInfo is IArrayTypeSymbol stringArrayType ? stringArrayType.ElementType : typeInfo;
+                if (elementTypeSymbol?.SpecialType != SpecialType.System_String && AgUtils.GetStringInfo(field).IsArray) {
+                    snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.AttributeOnWrongTypeError,
+                        field.GetLocation(), fieldName, typeStr, AeroStringAttribute.Name, "strings and string arrays"));
+                    break;
+                }
+
                 // Arrays
-                if (typeStr?.EndsWith("[]") ?? false) {
+                if (isArrayType) {
                     var arrayAttrData = AgUtils.GetArrayInfo(field);
 
                     if (!arrayAttrData.IsArray) {
