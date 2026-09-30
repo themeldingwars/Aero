@@ -150,6 +150,13 @@ namespace Aero.Gen
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
+        public static readonly DiagnosticDescriptor AttributeOnWrongTypeError = new DiagnosticDescriptor(id: "Aero19",
+            title: "Attribute on a field of the wrong type",
+            messageFormat: "Field '{0}' of type '{1}' has [{2}], which only applies to {3}",
+            category: "Aero.Gen",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
         public static readonly DiagnosticDescriptor AeroArrayInvalidArgumentError = new DiagnosticDescriptor(id: "Aero16",
             title: "Invalid AeroArray argument",
             messageFormat: "Field '{0}' has an invalid [AeroArray] argument: {1}",
