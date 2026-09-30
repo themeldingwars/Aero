@@ -89,7 +89,7 @@ namespace Aero.Gen
 
         public static readonly DiagnosticDescriptor InvalidTypeInEncounterView = new DiagnosticDescriptor(id: "Aero7",
             title: "Invalid type in encounter view",
-            messageFormat: "Field '{0}' uses invalid type '{1}', use byte/bool/ushort/uint/float/ulong/Timer/EntityId or fixed size array of any of these types",
+            messageFormat: "Field '{0}' uses invalid type '{1}', use bool/short/ushort/uint/float/ulong/Timer/EntityId, a ushort enum or a fixed size array of any of these types",
             category: "Aero.Gen",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
@@ -132,6 +132,13 @@ namespace Aero.Gen
         public static readonly DiagnosticDescriptor AeroBlobInEncounterViewError = new DiagnosticDescriptor(id: "Aero15",
             title: "AeroBlob in an encounter view",
             messageFormat: "Field '{0}' has [AeroBlob], but blobs aren't supported in encounter views",
+            category: "Aero.Gen",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor InvalidEnumInEncounterView = new DiagnosticDescriptor(id: "Aero17",
+            title: "Invalid enum in encounter view",
+            messageFormat: "Field '{0}' uses enum '{1}', the values of an encounter view enum have to be 0 to n-1 without gaps",
             category: "Aero.Gen",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
