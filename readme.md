@@ -298,6 +298,23 @@ For each field in a view call a property will be genrated, for non nullables the
 This is why feilds should be defined as private to ensure only the propetys can be called and those changes can be tracked.
 These views shouldn't be shared or polled for this reason.
 
+## Encounter views
+A view with ``[AeroEncounter("name")]`` also gets a ``GetHeader()`` that describes its fields for the client (``index, type, count, name\0`` per field). The field types map to the client's encounter field types:
+
+| Type | C# type | Wire value |
+| --- | --- | --- |
+| 0 | ``uint`` | 4 bytes |
+| 1 | ``float`` | 4 bytes |
+| 2 | ``EntityId`` | 8 bytes |
+| 3 | ``ulong`` | 8 bytes |
+| 4 | an enum with ``: ushort`` | 2 bytes, the index of a value name |
+| 6 | ``short``, ``ushort`` | 2 bytes, the client treats it as signed |
+| 7 | ``Timer`` | 1 state byte, then a float or a ulong |
+| 8 | ``bool`` | 1 byte |
+
+Fixed size arrays of these add 128 to the type. For type 4 the header lists the enum's value names after the field name as ``\x01name1\x01name2\x01\0``, so the enum values have to be 0 to n-1. For a ``[Flags]`` or sparse value, use a plain ``ushort``, which is type 6.
+
+
 
 # Message routing
 If any class in the project has ``[AeroMessageId]`` the generator emits a public static class ``AeroRouting``.

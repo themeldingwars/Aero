@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Text;
 using Aero.Gen.Attributes;
 using Microsoft.CodeAnalysis;
@@ -38,6 +39,11 @@ namespace Aero.Gen
                 return hex.ToString().Trim();
             }
 
+            // Type 4 fields are followed by their value names: 0x01 before each name, a closing 0x01 and a 0
+            string ValueNamesToHex(string[] names) =>
+                NameToHex("\u0001" + string.Concat(names.Select(x => x + "\u0001")));
+
+            var sm       = SyntaxReceiver.Context.Compilation.GetSemanticModel(cd.SyntaxTree);
             var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
             byte fieldIdx = 0;
 
@@ -78,10 +84,27 @@ namespace Aero.Gen
                 }
 
                 var typeStr = node.TypeStr.ToLower();
+                var isArray = node is AeroArrayNode;
+                string[] valueNames = null;
 
-                if (node is AeroFieldNode { IsEnum: true } fieldNode)
+                var enumNode = (isArray ? node.Nodes[0] : node) as AeroFieldNode;
+                if (enumNode is { IsEnum: true })
                 {
-                    typeStr = TypeAlias(fieldNode.EnumStr).ToLower();
+                    typeStr = TypeAlias(enumNode.EnumStr).ToLower() + (isArray ? "[]" : "");
+
+                    // A ushort enum is type 4, the value is an index into the value names listed after the field
+                    if (enumNode.EnumStr == "uint16")
+                    {
+                        valueNames = GetEncounterEnumValueNames(cd, sm, name);
+                        if (valueNames == null)
+                        {
+                            Context.ReportDiagnostic(
+                                Diagnostic.Create(AeroGenerator.InvalidEnumInEncounterView, cd.GetLocation(), name, enumNode.TypeStr)
+                            );
+                        }
+
+                        typeStr = isArray ? "enum[]" : "enum";
+                    }
                 }
 
                 byte byteType = typeStr switch
@@ -90,8 +113,9 @@ namespace Aero.Gen
                     "float"                              => 1,
                     string t when t.EndsWith("entityid") => 2,
                     "ulong"                              => 3,
-                    "byte"                               => 4,
+                    "enum"                               => 4,
                     // there's no type 5
+                    "short"                              => 6,
                     "ushort"                             => 6,
                     string t when t.EndsWith("timer")    => 7,
                     "bool"                               => 8,
@@ -100,8 +124,9 @@ namespace Aero.Gen
                     "float[]"                              => 129,
                     string t when t.EndsWith("entityid[]") => 130,
                     "ulong[]"                              => 131,
-                    "byte[]"                               => 132,
+                    "enum[]"                               => 132,
                     // there's no type 133 either
+                    "short[]"                              => 134,
                     "ushort[]"                             => 134,
                     string t when t.EndsWith("timer[]")    => 135,
                     "bool[]"                               => 136,
@@ -123,6 +148,10 @@ namespace Aero.Gen
                 AddLine(
                     $"0x{hexIdx}, 0x{hexType}, 0x{hexCount}, // idx: {fieldIdx}, type: {typeStr}, count: {count}, name: {name}");
                 AddLine(NameToHex(name));
+                if (valueNames != null)
+                {
+                    AddLine($"{ValueNamesToHex(valueNames)} // value names: {string.Join(", ", valueNames)}");
+                }
 
                 fieldIdx++;
             });
@@ -136,6 +165,44 @@ namespace Aero.Gen
             }
 
             AddLine();
+        }
+
+        // The names of the enum's values ordered by value, or null if there are none or they aren't 0 to n-1
+        private static string[] GetEncounterEnumValueNames(ClassDeclarationSyntax cd, SemanticModel sm, string fieldName)
+        {
+            var field = AgUtils.GetClassFields(cd, true).FirstOrDefault(x => AgUtils.GetFieldName(x) == fieldName);
+            var type  = field != null ? sm.GetTypeInfo(field.Declaration.Type).Type : null;
+            if (type is IArrayTypeSymbol arrayType)
+            {
+                type = arrayType.ElementType;
+            }
+
+            if (type is not INamedTypeSymbol { TypeKind: TypeKind.Enum } enumType)
+            {
+                return null;
+            }
+
+            var values = enumType.GetMembers()
+                                 .OfType<IFieldSymbol>()
+                                 .Where(x => x.HasConstantValue)
+                                 .Select(x => (x.Name, Value: Convert.ToInt32(x.ConstantValue)))
+                                 .OrderBy(x => x.Value)
+                                 .ToArray();
+
+            if (values.Length == 0)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (values[i].Value != i)
+                {
+                    return null;
+                }
+            }
+
+            return values.Select(x => x.Name).ToArray();
         }
     }
 }
