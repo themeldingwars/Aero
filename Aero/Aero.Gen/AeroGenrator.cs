@@ -143,6 +143,13 @@ namespace Aero.Gen
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
+        public static readonly DiagnosticDescriptor AeroBigEndianInvalidTypeError = new DiagnosticDescriptor(id: "Aero18",
+            title: "AeroBigEndian on an unsupported type",
+            messageFormat: "Field '{0}' is marked with [AeroBigEndian] but is of type '{1}', only short/ushort/int/uint/long/ulong, enums of them and arrays of either are supported",
+            category: "Aero.Gen",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
         public static readonly DiagnosticDescriptor AeroArrayInvalidArgumentError = new DiagnosticDescriptor(id: "Aero16",
             title: "Invalid AeroArray argument",
             messageFormat: "Field '{0}' has an invalid [AeroArray] argument: {1}",

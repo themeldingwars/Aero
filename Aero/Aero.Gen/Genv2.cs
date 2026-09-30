@@ -278,21 +278,25 @@ namespace Aero.Gen
             return alias;
         }
 
-        public void AddReader(string name, string typeStr, string castTypeStr = null)
+        // Integer handlers use BinaryPrimitives' LittleEndian functions, big endian swaps in their BigEndian counterparts
+        private static string ToBigEndian(string code, bool bigEndian) =>
+            bigEndian ? code.Replace("LittleEndian(", "BigEndian(") : code;
+
+        public void AddReader(string name, string typeStr, string castTypeStr = null, bool bigEndian = false)
         {
             if (TypeHandlers.TryGetValue(typeStr.ToLower(), out AeroTypeHandler handler)) {
                 var castedTypeStr = castTypeStr != null ? $"({castTypeStr})" : "";
-                AddLine($"{handler.Reader(name, castedTypeStr)}");
+                AddLine(ToBigEndian(handler.Reader(name, castedTypeStr), bigEndian));
                 AddLine($"offset += {handler.Size};");
                 AddLine();
             }
         }
 
-        public void AddWriter(string name, string typeStr, string castTypeStr = null)
+        public void AddWriter(string name, string typeStr, string castTypeStr = null, bool bigEndian = false)
         {
             if (TypeHandlers.TryGetValue(typeStr.ToLower(), out AeroTypeHandler handler)) {
                 var castedTypeStr = castTypeStr != null ? $"({castTypeStr})" : "";
-                AddLine($"{handler.Writer(name, castedTypeStr)}");
+                AddLine(ToBigEndian(handler.Writer(name, castedTypeStr), bigEndian));
                 AddLine($"offset += {handler.Size};");
                 AddLine();
             }
@@ -575,7 +579,8 @@ namespace Aero.Gen
 
                 AddReader(name,
                     (fieldNode.IsEnum ? fieldNode.EnumStr : fieldNode.TypeStr).ToLower(),
-                    fieldNode.IsEnum ? fieldNode.TypeStr : null);
+                    fieldNode.IsEnum ? fieldNode.TypeStr : null,
+                    fieldNode.IsBigEndian);
             }
             else if (node is AeroStringNode stringNode) {
                 CreateStringReader(stringNode, node);
@@ -886,7 +891,8 @@ namespace Aero.Gen
 
                 AddWriter(name,
                     (fieldNode.IsEnum ? TypeAlias(fieldNode.EnumStr) : fieldNode.TypeStr).ToLower(),
-                    fieldNode.IsEnum ? TypeAlias(fieldNode.EnumStr) : null);
+                    fieldNode.IsEnum ? TypeAlias(fieldNode.EnumStr) : null,
+                    fieldNode.IsBigEndian);
             }
             else if (node is AeroStringNode stringNode) {
                 CreateStringWriter(stringNode, node);
