@@ -74,8 +74,7 @@ namespace Aero.Gen
 
                 if (Config.DiagLogging) {
                     //AddLine($"ReadLogs.Add((\"{NULLABLE_FIELD_BASE_NAME}_{i}\", offsetBefore, offset - offsetBefore, \"byte\", {NULLABLE_FIELD_BASE_NAME}_{i}));");
-                    AddLine($"ReadLogs.Add(new AeroReadLog(\"\", \"{NULLABLE_FIELD_BASE_NAME}_{i}\", offsetBefore, offset - offsetBefore, \"byte\", typeof(byte)));");
-                    AddLine("offsetBefore = offset;");
+                    AddLine($"ReadLogs.Add(new AeroReadLog(\"\", \"{NULLABLE_FIELD_BASE_NAME}_{i}\", offset - 1, 1, \"byte\", typeof(byte)));");
                 }
             });
 
@@ -178,8 +177,7 @@ namespace Aero.Gen
 
                     if (Config.DiagLogging) {
                         //AddLine($"ReadLogs.Add(($\"SF Id: {{id}}\", offsetBefore, offset - offsetBefore, \"byte\", id));");
-                        AddLine($"ReadLogs.Add(new AeroReadLog(\"\", $\"SF Id: {{id}}\", offsetBefore, offset - offsetBefore, \"byte\", typeof(byte)));");
-                        AddLine("offsetBefore = offset;");
+                        AddLine($"ReadLogs.Add(new AeroReadLog(\"\", $\"SF Id: {{id}}\", offset - 1, 1, \"byte\", typeof(byte)));");
                     }
 
                     var shadowFieldIdx               = 0;

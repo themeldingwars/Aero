@@ -18,6 +18,11 @@ namespace Aero.Gen
         }
 
         public AeroReadLog(string parentName, string name, int offset, int length, string typeStr, Type type)
+            : this(parentName, name, offset, length, typeStr, type, LogEntryType.Field)
+        {
+        }
+
+        public AeroReadLog(string parentName, string name, int offset, int length, string typeStr, Type type, LogEntryType entryType)
         {
             ParentName = parentName != "" ? parentName : null;
             Name       = name;
@@ -25,7 +30,7 @@ namespace Aero.Gen
             Length     = length;
             TypeStr    = typeStr;
             Type       = type;
-            EntryType = LogEntryType.Field;
+            EntryType  = entryType;
         }
 
         public AeroReadLog(string parentName, string name, bool isArray, Type type, int offset)
@@ -49,7 +54,10 @@ namespace Aero.Gen
         {
             Field,
             Array,
-            AeroBlock
+            AeroBlock,
+
+            // The count or length prefix of an array, Name is the array's name
+            Length
         }
     }
 }

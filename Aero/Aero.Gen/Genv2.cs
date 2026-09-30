@@ -562,6 +562,11 @@ namespace Aero.Gen
                 }
             }
 
+            // Bytes read without a log entry of their own (view and encounter indices) aren't part of the next field
+            if (Config.DiagLogging && node is AeroFieldNode or AeroStringNode or AeroBlobNode) {
+                AddLine("offsetBefore = offset;");
+            }
+
             if (node is AeroFieldNode fieldNode) {
                 var name = fieldNode.GetFullName();
                 if (node.Parent?.Parent is {IsNullable: true, IsRoot: false}) {
@@ -596,16 +601,33 @@ namespace Aero.Gen
             return nullableIdx;
         }
 
-        private void LogDiagRead(AeroNode node, bool isArrayDefine = false, bool iaAeroBlockDefine = false)
+        private static (string parentName, string name) GetDiagLogNames(AeroNode node)
         {
-            if (!Config.DiagLogging) return;
-
             var parentName = node?.Parent.GetFullName().Replace("[", "[{").Replace("]", "}]");
             var name       = node.GetFullName().Replace("[", "[{").Replace("]", "}]");
 
             if (parentName != null && parentName.Length > 0) {
                 name = name.Replace(parentName, "").TrimStart('.').TrimStart('[').TrimEnd(']');
             }
+
+            return (parentName, name);
+        }
+
+        // Logs the count prefix of an array that was just read, the entry is named after the array
+        private void LogDiagArrayLength(AeroArrayNode arrayNode, string typeStr, int size)
+        {
+            if (!Config.DiagLogging) return;
+
+            var (parentName, name) = GetDiagLogNames(arrayNode);
+            AddLine($"ReadLogs.Add(new AeroReadLog($\"{parentName}\", $\"{name}\", offset - {size}, {size}, \"{typeStr}\", " +
+                    $"typeof({typeStr}), AeroReadLog.LogEntryType.Length));");
+        }
+
+        private void LogDiagRead(AeroNode node, bool isArrayDefine = false, bool iaAeroBlockDefine = false)
+        {
+            if (!Config.DiagLogging) return;
+
+            var (parentName, name) = GetDiagLogNames(node);
 
             if (isArrayDefine) {
                 AddLine($"ReadLogs.Add(new AeroReadLog($\"{parentName}\", " +
@@ -630,7 +652,6 @@ namespace Aero.Gen
                         $"offset  - offsetBefore, "                         +
                         $"\"{node.TypeStr}\", "                               +
                         $"typeof({node.TypeStr})));");
-                AddLine("offsetBefore = offset;");
             }
         }
 
@@ -1061,6 +1082,10 @@ namespace Aero.Gen
                         }
 
                         AddLine($"offset += {handler.Size};");
+                        if (createArray) {
+                            LogDiagArrayLength(arrayNode, arrayNode.PrefixTypeStr, handler.Size);
+                        }
+
                         AddLine();
 
                         if (createArray) {
@@ -1099,8 +1124,9 @@ namespace Aero.Gen
                         AddLine("while (true)");
                         StartScope();
                         AddLines($"var {chunkName} = data[offset];",
-                            "offset += 1;",
-                            $"var {startName} = {arrayName}.Length;",
+                            "offset += 1;");
+                        LogDiagArrayLength(arrayNode, "byte", 1);
+                        AddLines($"var {startName} = {arrayName}.Length;",
                             $"var {grownName} = new {firstSubNode.TypeStr}[{startName} + {chunkName}];",
                             $"Array.Copy({arrayName}, {grownName}, {startName});",
                             $"{arrayName} = {grownName};",
