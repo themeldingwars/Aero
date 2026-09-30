@@ -343,4 +343,5 @@ The following settings can be used in a `.globalconfig` file to adjust the gener
 * ``Aero_Enabled``: Enable or disable the generator
 * ``Aero_BoundsCheck``: Enable or disable bounds checking for the unpacker, will return -bytes read if it couldn't read more from the passed buffer
 * ``Aero_DiagLogging``: Enable or disable diagnostic logging from the packer / unpackers
+    * ``GetDiagReadLogs()`` returns an entry per field read with its offset and length. Array counts get an entry of their own with ``EntryType == Length`` and the array's name, so the field and length entries tile the data. The index bytes in front of the array elements of encounter views are the exception, they aren't logged.
 * ``Aero_LogReadsWrites``: Enable or disable logging the reading or writing done by the packers or unpackers (just the unpackers atm), needs Aero_DiagLogging enabled too.
