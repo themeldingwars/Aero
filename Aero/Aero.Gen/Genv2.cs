@@ -60,7 +60,7 @@ namespace Aero.Gen
                 {
                     Size   = 1,
                     Reader = (name, typeCast) => $"{name} = {typeCast}(sbyte)data[offset];",
-                    Writer = (name, typeCast) => $"buffer[offset] = {typeCast}((byte){name});",
+                    Writer = (name, typeCast) => $"buffer[offset] = (byte)({typeCast}{name});",
                 }
             },
             {
@@ -76,7 +76,7 @@ namespace Aero.Gen
                 {
                     Size   = 1,
                     Reader = (name, typeCast) => $"{name} = ({typeCast}(char)data[offset]);",
-                    Writer = (name, typeCast) => $"buffer[offset] = {typeCast}((byte){name});",
+                    Writer = (name, typeCast) => $"buffer[offset] = (byte)({typeCast}{name});",
                 }
             },
             {
