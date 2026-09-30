@@ -511,7 +511,7 @@ namespace Aero.Gen
                 CreateLogicFlow(rootNode,
                     CreateUnpackerPreNode,
                     node => { CreateUnpackerOnNode(isView, node, ref nullableIdx); },
-                    scopeEnd: CloseChunkedArrayScope);
+                    scopeEnd: node => CloseArrayScope(node, true));
 
                 AddLine("return offset;");
             }
@@ -662,6 +662,11 @@ namespace Aero.Gen
                 AddLine($"{idxName}++;");
             }
 
+            if (node?.Parent is AeroArrayNode {Mode: AeroArrayNode.Modes.ByteLength} byteLenArray &&
+                byteLenArray.Nodes.First().Index == node.Index) {
+                GrowByteLengthArray(byteLenArray);
+            }
+
             if (node is AeroBlockNode) {
                 LogDiagRead(node, iaAeroBlockDefine: true);
             }
@@ -741,7 +746,7 @@ namespace Aero.Gen
                 bool dataSizeKnown = (arrayNode.GetSize() != -1);
                 if (dataSizeKnown) {
                     // Then we can one line
-                    var prefixLen = arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed
+                    var prefixLen = arrayNode.Mode is AeroArrayNode.Modes.LenTypePrefixed or AeroArrayNode.Modes.ByteLength
                         ? GetTypeSize(arrayNode.PrefixTypeStr)
                         : 0;
 
@@ -808,7 +813,7 @@ namespace Aero.Gen
             // For arrays where we dont know the size, create a loop
             if (node is AeroArrayNode arrayNode && arrayNode.GetSize() < 0) {
                 // Account for prefix length before the loop
-                if (arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed) {
+                if (arrayNode.Mode is AeroArrayNode.Modes.LenTypePrefixed or AeroArrayNode.Modes.ByteLength) {
                     if (TypeHandlers.TryGetValue(arrayNode.PrefixTypeStr, out AeroTypeHandler handler)) {
                         AddLine($"offset += {handler.Size};");
                         AddLine();
@@ -851,7 +856,7 @@ namespace Aero.Gen
                 CreateLogicFlow(rootNode,
                     CreatePackerPreNode,
                     (node) => CreatePackerOnNode(node, node.IsNullable),
-                    scopeEnd: CloseChunkedArrayScope);
+                    scopeEnd: node => CloseArrayScope(node, false));
 
                 AddLine("return offset;");
             }
@@ -1145,6 +1150,41 @@ namespace Aero.Gen
 
                     break;
 
+                case AeroArrayNode.Modes.ByteLength:
+                    if (!TypeHandlers.TryGetValue(arrayNode.PrefixTypeStr, out AeroTypeHandler byteLenHandler)) {
+                        AddLine($"// Oh shit something went wrong and I couldn't read a type of {arrayNode.PrefixTypeStr} :<");
+                        break;
+                    }
+
+                    var byteArrayName = firstSubNode.GetFullName(true);
+                    var byteLenName   = $"array{firstSubNode.Name}{arrayNode.Depth}ByteLen";
+                    var byteEndName   = $"array{firstSubNode.Name}{arrayNode.Depth}End";
+
+                    // The scope is closed in CloseArrayScope, which checks the end or writes the length
+                    if (createArray) {
+                        AddLine($"var {byteLenHandler.Reader(byteLenName, null)}");
+                        AddLine($"offset += {byteLenHandler.Size};");
+                        LogDiagArrayLength(arrayNode, arrayNode.PrefixTypeStr, byteLenHandler.Size);
+                        StartScope();
+                        AddLines($"var {byteEndName} = offset + {byteLenName};",
+                            $"if ({byteEndName} > data.Length || {byteEndName} < offset) throw new System.IO.InvalidDataException(" +
+                            $"$\"{byteArrayName} has a byte length of {{{byteLenName}}}, outside of the data\");",
+                            $"{byteArrayName} = new {firstSubNode.TypeStr}[0];");
+                        LogDiagRead(arrayNode, isArrayDefine: true);
+                        AddLine($"var {idxName} = 0;");
+                        AddLine($"var array{firstSubNode.Name}{arrayNode.Depth}ElementStart = -1;");
+                        AddLine($"for (; offset < {byteEndName}; {idxName}++)");
+                    }
+                    else {
+                        StartScope();
+                        AddLines($"var {byteLenName}Offset = offset;",
+                            $"offset += {byteLenHandler.Size};",
+                            "");
+                        AddLine($"for (int {idxName} = 0; {idxName} < {byteArrayName}.Length; {idxName}++)");
+                    }
+
+                    break;
+
                 case AeroArrayNode.Modes.ReadToEnd:
                     if (createArray) {
                         AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{-arrayNode.Length}];");
@@ -1161,14 +1201,68 @@ namespace Aero.Gen
             }
         }
 
-        // Ends the chunk loop that CreateForFromNode opened around the element loop of a chunked array
-        private void CloseChunkedArrayScope(AeroNode scopeOwner)
+        // Ends the scope that CreateForFromNode opened around the element loop of a chunked or byte length array
+        private void CloseArrayScope(AeroNode scopeOwner, bool isReading)
         {
-            if (scopeOwner is AeroArrayNode {Mode: AeroArrayNode.Modes.Chunked} arrayNode) {
-                var firstSubNode = arrayNode.Nodes.First(x => x is AeroFieldNode or AeroBlockNode or AeroStringNode);
+            if (scopeOwner is not AeroArrayNode arrayNode) {
+                return;
+            }
+
+            var firstSubNode = arrayNode.Nodes.FirstOrDefault(x => x is AeroFieldNode or AeroBlockNode or AeroStringNode);
+            if (arrayNode.Mode == AeroArrayNode.Modes.Chunked) {
                 AddLine($"if (array{firstSubNode.Name}{arrayNode.Depth}Chunk != 255) break;");
                 EndScope();
             }
+            else if (arrayNode.Mode == AeroArrayNode.Modes.ByteLength &&
+                     TypeHandlers.TryGetValue(arrayNode.PrefixTypeStr, out AeroTypeHandler handler)) {
+                var arrayName   = firstSubNode.GetFullName(true);
+                var byteLenName = $"array{firstSubNode.Name}{arrayNode.Depth}ByteLen";
+                var idxName     = $"idx{arrayNode.Depth}";
+
+                if (isReading) {
+                    var endName     = $"array{firstSubNode.Name}{arrayNode.Depth}End";
+                    var trimmedName = $"array{firstSubNode.Name}{arrayNode.Depth}Trimmed";
+                    AddLines($"if (offset != {endName}) throw new System.IO.InvalidDataException(" +
+                             $"$\"{arrayName} overran its byte length of {{{byteLenName}}}\");",
+                        $"var {trimmedName} = new {firstSubNode.TypeStr}[{idxName}];",
+                        $"Array.Copy({arrayName}, {trimmedName}, {idxName});",
+                        $"{arrayName} = {trimmedName};");
+                }
+                else {
+                    // Write the length into the space left for it before the elements
+                    var lenOffsetName = $"{byteLenName}Offset";
+                    if (arrayNode.PrefixTypeStr is "byte" or "ushort") {
+                        AddLine($"if (offset - {lenOffsetName} - {handler.Size} > {arrayNode.PrefixTypeStr}.MaxValue) " +
+                                $"throw new System.InvalidOperationException(" +
+                                $"$\"{arrayName} is {{offset - {lenOffsetName} - {handler.Size}}} bytes, more than its {arrayNode.PrefixTypeStr} length can hold\");");
+                    }
+
+                    AddLine(handler.Writer($"(offset - {lenOffsetName} - {handler.Size})", $"({arrayNode.PrefixTypeStr})")
+                                   .Replace("buffer.Slice(offset,", $"buffer.Slice({lenOffsetName},")
+                                   .Replace("buffer[offset]", $"buffer[{lenOffsetName}]"));
+                }
+
+                EndScope();
+            }
+        }
+
+        // Grows the array of a byte length array at the start of each element, the count isn't known up front
+        private void GrowByteLengthArray(AeroArrayNode arrayNode)
+        {
+            var firstSubNode = arrayNode.Nodes.First(x => x is AeroFieldNode or AeroBlockNode or AeroStringNode);
+            var arrayName    = firstSubNode.GetFullName(true);
+            var grownName    = $"array{firstSubNode.Name}{arrayNode.Depth}Grown";
+            var startName    = $"array{firstSubNode.Name}{arrayNode.Depth}ElementStart";
+
+            // The loop only ends once the elements used up the data, an element that reads nothing would never get there
+            AddLines($"if (offset == {startName}) throw new System.IO.InvalidDataException($\"{arrayName} has an element that reads no bytes\");",
+                $"{startName} = offset;");
+            AddLine($"if (idx{arrayNode.Depth} == {arrayName}.Length)");
+            StartScope();
+            AddLines($"var {grownName} = new {firstSubNode.TypeStr}[Math.Max(4, {arrayName}.Length * 2)];",
+                $"Array.Copy({arrayName}, {grownName}, {arrayName}.Length);",
+                $"{arrayName} = {grownName};");
+            EndScope();
         }
 
         // Boiler plate code for creating the logic flow

@@ -15,6 +15,9 @@ namespace Aero.Gen.Attributes
         // A count of 255 means another chunk follows, so 255 elements are written as FF ... 00
         public bool Chunked;
 
+        // Only with typeof(...): the length is the number of bytes the elements take up, not the element count
+        public bool LengthIsBytes;
+
         public AeroArrayAttribute()
         {
         }

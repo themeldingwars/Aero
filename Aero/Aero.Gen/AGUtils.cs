@@ -47,7 +47,8 @@ namespace Aero.Gen
             LengthType,
             FixedSize,
             NullTerminated,
-            Chunked
+            Chunked,
+            ByteLength
         }
 
         public Mode   ArrayMode;
@@ -222,23 +223,34 @@ namespace Aero.Gen
 
             foreach (var namedArg in namedArgs) {
                 var argName = namedArg.NameEquals.Name.Identifier.Text;
-                if (argName == nameof(AeroArrayAttribute.Chunked)) {
-                    if (namedArg.Expression.IsKind(SyntaxKind.FalseLiteralExpression)) {
-                        continue;
-                    }
+                if (argName != nameof(AeroArrayAttribute.Chunked) && argName != nameof(AeroArrayAttribute.LengthIsBytes)) {
+                    data.Error = $"'{argName}' isn't a supported AeroArray argument";
+                    continue;
+                }
 
-                    if (!namedArg.Expression.IsKind(SyntaxKind.TrueLiteralExpression)) {
-                        data.Error = "Chunked has to be true or false";
-                    }
-                    else if (data.ArrayMode != AeroArrayInfo.Mode.LengthType || data.KeyType != "byte") {
+                if (namedArg.Expression.IsKind(SyntaxKind.FalseLiteralExpression)) {
+                    continue;
+                }
+
+                if (!namedArg.Expression.IsKind(SyntaxKind.TrueLiteralExpression)) {
+                    data.Error = $"{argName} has to be true or false";
+                }
+                else if (data.ArrayMode != AeroArrayInfo.Mode.LengthType) {
+                    data.Error = "Chunked and LengthIsBytes need a typeof(...) length and can't be combined";
+                }
+                else if (argName == nameof(AeroArrayAttribute.Chunked)) {
+                    if (data.KeyType != "byte") {
                         data.Error = "Chunked is only supported with typeof(byte)";
                     }
                     else {
                         data.ArrayMode = AeroArrayInfo.Mode.Chunked;
                     }
                 }
+                else if (data.KeyType is not ("byte" or "ushort" or "uint" or "int")) {
+                    data.Error = "LengthIsBytes is only supported with typeof(byte), typeof(ushort), typeof(uint) or typeof(int)";
+                }
                 else {
-                    data.Error = $"'{argName}' isn't a supported AeroArray argument";
+                    data.ArrayMode = AeroArrayInfo.Mode.ByteLength;
                 }
             }
 

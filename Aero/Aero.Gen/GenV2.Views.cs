@@ -192,7 +192,7 @@ namespace Aero.Gen
                                     CreateLogicFlow(node,
                                         CreateUnpackerPreNode,
                                         node => { CreateUnpackerOnNode(false, node, ref nullableIdx, isEncounterClass); },
-                                        scopeEnd: CloseChunkedArrayScope);
+                                        scopeEnd: node => CloseArrayScope(node, true));
                                     AddLine("break;");
                                 }
 
@@ -273,7 +273,7 @@ namespace Aero.Gen
                     CreateLogicFlow(node,
                         (node) => CreatePackerPreNode(node),
                         (node) => CreatePackerOnNode(node, false, true, fieldIdx),
-                        scopeEnd: CloseChunkedArrayScope);
+                        scopeEnd: node => CloseArrayScope(node, false));
                 }
                 else
                 {
@@ -281,7 +281,7 @@ namespace Aero.Gen
                     CreateLogicFlow(node,
                         (node) => CreatePackerPreNode(node),
                         (node) => CreatePackerOnNode(node, false),
-                        scopeEnd: CloseChunkedArrayScope);
+                        scopeEnd: node => CloseArrayScope(node, false));
                 }
             }
         }

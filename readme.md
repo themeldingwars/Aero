@@ -82,6 +82,9 @@ Marks a field as an array, there are a few variants of this.
 * ``AeroArray(typeof(byte), Chunked = true)`` : the array is a sequence of chunks, each with its own count byte. When a count is 255 another count follows, so arrays can hold more than 254 elements.
     * 255 elements are written as ``FF <255 elements> 00``, 256 as ``FF <255 elements> 01 <1 element>`` and an empty array as a single ``00``.
     * This is how the Firefall client reads every byte-counted array. It's only supported with ``typeof(byte)``.
+* ``AeroArray(Type lengthType, LengthIsBytes = true)`` : the length is the number of bytes the elements take up, not the number of elements. Elements are read until that many bytes are used, so they can differ in size.
+    * Reading throws an ``InvalidDataException`` when the length is negative or goes past the end of the data, the last element ends past the length or an element reads no bytes. An element that reads past the end of the data throws like any other read. Packing writes the length after the elements.
+    * Conditions inside the elements can use a C# property of the block, eg ``public byte GuidLowByte => (byte)Guid;`` with ``[AeroIf(nameof(GuidLowByte), 0xFF)]``. Properties aren't serialized.
 * ``AeroArray(int -length)`` : eg ``[AeroArray(-4)]`` If the fixed size is negative then the array will be crated with that number positive but will keep reading untill the end of the data is reached
   * eg. ``[AeroArray(-4)] public int Test;`` will create an array of ints with a size of 4 and do a ``while(!hasReachedTheEnd)`` for reading
   * The size given as the arg should be the max size that the array can have, it won't be resized

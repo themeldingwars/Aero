@@ -82,7 +82,8 @@ namespace Aero.Gen
             LenTypePrefixed,
             Fixed,
             ReadToEnd,
-            Chunked
+            Chunked,
+            ByteLength
         }
 
         public Modes  Mode;
@@ -504,7 +505,7 @@ namespace Aero.Gen
                     if (arrayNode.Mode == AeroArrayNode.Modes.Fixed) {
                         sb.Append($"Len, {arrayNode.Length}");
                     }
-                    else if (arrayNode.Mode is AeroArrayNode.Modes.LenTypePrefixed or AeroArrayNode.Modes.Chunked) {
+                    else if (arrayNode.Mode is AeroArrayNode.Modes.LenTypePrefixed or AeroArrayNode.Modes.Chunked or AeroArrayNode.Modes.ByteLength) {
                         sb.Append($"Length prefix type: {arrayNode.PrefixTypeStr}");
                     }
                     else if (arrayNode.Mode == AeroArrayNode.Modes.Ref) {
