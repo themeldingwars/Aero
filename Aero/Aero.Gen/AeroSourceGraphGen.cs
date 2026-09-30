@@ -456,15 +456,17 @@ namespace Aero.Gen
                         currentNode.Parent.Name = fieldName;
                     }
                     else {
+                        // For arrays the element type decides how a value is read
+                        var elementTypeInfo = typeInfo is IArrayTypeSymbol elementArrayType ? elementArrayType.ElementType : typeInfo;
                         var fieldNode = new AeroFieldNode
                         {
                             Name    = fieldName,
                             Parent  = currentNode,
                             TypeStr = typeStr.TrimEnd(new[] {'[', ']'}),
                             EnumStr =
-                                typeInfo is INamedTypeSymbol ns ? ns.EnumUnderlyingType?.Name.ToLower() ?? "" : "",
-                            IsEnum     = typeInfo?.TypeKind                                                   == TypeKind.Enum,
-                            IsFlags    = typeInfo?.GetAttributes().Any(x => x.AttributeClass.Name == "Flags") == true,
+                                elementTypeInfo is INamedTypeSymbol ns ? ns.EnumUnderlyingType?.Name.ToLower() ?? "" : "",
+                            IsEnum     = elementTypeInfo?.TypeKind                                                   == TypeKind.Enum,
+                            IsFlags    = elementTypeInfo?.GetAttributes().Any(x => x.AttributeClass.Name == "Flags") == true,
                             Depth      = currentNode.Depth + 1,
                             Index      = state.Idx++,
                             IsNullable = currentNode.IsNullable
