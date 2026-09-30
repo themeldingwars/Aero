@@ -233,12 +233,14 @@ namespace Aero.Gen
             var fieldList = fields.ToList();
 
             // Warn about blob refs that point at fields declared after the blob, the ref would read as default.
-            // Only done at the top level, block fields are walked one at a time so the order can't be seen
+            // Only done at the top level, block fields are walked one at a time so the order can't be seen.
+            // A ref to a property is fine, it computes the length from fields that were already read
             if (parent == null) {
                 for (int i = 0; i < fieldList.Count; i++) {
                     var blobData = AgUtils.GetBlobInfo(fieldList[i]);
                     if (blobData.IsBlob && blobData.BlobMode == AeroBlobInfo.Mode.RefField && blobData.KeyName != null &&
-                        !fieldList.Take(i).Any(f => AgUtils.GetFieldName(f) == blobData.KeyName)) {
+                        !fieldList.Take(i).Any(f => AgUtils.GetFieldName(f) == blobData.KeyName) &&
+                        !IsProperty(snr, fieldList[i], blobData.KeyName)) {
                         snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.AeroBlobRefAfterBlobWarning,
                             fieldList[i].GetLocation(), AgUtils.GetFieldName(fieldList[i]), blobData.KeyName));
                     }
@@ -482,6 +484,14 @@ namespace Aero.Gen
             }
 
             return parent == null ? rootNode : rootNode.Nodes.First();
+        }
+
+        private static bool IsProperty(AeroSyntaxReceiver snr, FieldDeclarationSyntax field, string memberName)
+        {
+            var sModel = snr.Context.Compilation.GetSemanticModel(field.SyntaxTree);
+            var type   = sModel.GetDeclaredSymbol(field.Declaration.Variables.First())?.ContainingType;
+
+            return type?.GetMembers(memberName).OfType<IPropertySymbol>().Any() == true;
         }
 
         public static string PrintTree(AeroNode rootNode)

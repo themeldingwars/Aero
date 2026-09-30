@@ -93,6 +93,7 @@ Marks a ``byte[]`` field as a blob of raw bytes, the bytes are copied as a whole
   * A read-to-end blob must be the last field in the class, other fields can't be read after it.
 * ``[AeroBlob(typeof(ushort))]`` : reads a little endian value of the given type and reads that number of bytes into the field, similar to ``AeroArray(typeof(...))`` but the bytes are copied raw instead of being read element by element.
 * ``[AeroBlob(nameof(Length))]`` : uses the value of the given already read numeric field as the number of bytes to read.
+  * ``Length`` can also be a property that computes the length from fields read before the blob, eg ``public int BitsLength => ((BitsHeader >> 6) + 1) * 8;``. Packing doesn't update the fields the property reads, keep them in sync with the blob.
 
 Blobs must be ``byte[]`` fields. Fields can follow a blob when its length is known (the ``typeof`` and ``nameof`` variants), blobs aren't supported in encounter views.
 
