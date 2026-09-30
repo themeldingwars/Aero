@@ -712,7 +712,7 @@ namespace Aero.Gen
                     AddLine($"offset += {stringNode.GetSize()}; // string");
                 }
                 else {
-                    AddLine($"offset += {length} + {stringNode.GetFullName()}.Length; // string");
+                    AddLine($"offset += {length} + Encoding.UTF8.GetByteCount({stringNode.GetFullName()}); // string");
                 }
             }
             else if (node is AeroArrayNode arrayNode) {
@@ -923,32 +923,49 @@ namespace Aero.Gen
             var writeStringCall = "Encoding.UTF8.GetBytes";
             var lenName         = $"{stringNode.Name}Len";
 
+            var bytesName = $"{stringNode.Name}Bytes";
+
             switch (stringNode.Mode) {
                 case AeroStringNode.Modes.Ref:
-                case AeroStringNode.Modes.Fixed:
                 case AeroStringNode.Modes.NullTerminated:
                     AddLines(
-                        $"var {stringNode.Name}Bytes = {writeStringCall}({stringNode.GetFullName()}).AsSpan();",
-                        $"{stringNode.Name}Bytes.CopyTo(buffer.Slice(offset, {stringNode.Name}Bytes.Length));");
+                        $"var {bytesName} = {writeStringCall}({stringNode.GetFullName()}).AsSpan();",
+                        $"{bytesName}.CopyTo(buffer.Slice(offset, {bytesName}.Length));");
 
                     if (stringNode.Mode == AeroStringNode.Modes.NullTerminated) {
-                        AddLines($"buffer[offset + {stringNode.Name}Bytes.Length] = 0;",
-                            $"offset += ({stringNode.Name}Bytes.Length + 1);");
+                        AddLines($"buffer[offset + {bytesName}.Length] = 0;",
+                            $"offset += ({bytesName}.Length + 1);");
                     }
                     else {
-                        AddLine($"offset += {stringNode.Name}Bytes.Length;");
+                        AddLine($"offset += {bytesName}.Length;");
                     }
 
                     break;
+                case AeroStringNode.Modes.Fixed:
+                    // Always the fixed number of bytes, padded with 0 or cut off before the character that doesn't fit
+                    AddLines(
+                        $"var {bytesName} = {writeStringCall}({stringNode.GetFullName()}).AsSpan();",
+                        $"var {bytesName}Len = Math.Min({bytesName}.Length, {stringNode.Length});",
+                        $"while ({bytesName}Len > 0 && {bytesName}Len < {bytesName}.Length && ({bytesName}[{bytesName}Len] & 0xC0) == 0x80) {bytesName}Len--;",
+                        $"{bytesName} = {bytesName}.Slice(0, {bytesName}Len);",
+                        $"{bytesName}.CopyTo(buffer.Slice(offset, {bytesName}.Length));",
+                        $"buffer.Slice(offset + {bytesName}.Length, {stringNode.Length} - {bytesName}.Length).Clear();",
+                        $"offset += {stringNode.Length};");
+                    break;
                 case AeroStringNode.Modes.LenTypePrefixed:
                     if (TypeHandlers.TryGetValue(stringNode.PrefixTypeStr.ToLower(), out AeroTypeHandler handler)) {
-                        var sizeOfKey = handler.Size;
-                        AddWriter($"{stringNode.GetFullName()}.Length", stringNode.PrefixTypeStr,
-                            stringNode.PrefixTypeStr);
+                        // The prefix is the number of bytes, not characters
+                        AddLine($"var {bytesName} = {writeStringCall}({stringNode.GetFullName()}).AsSpan();");
+                        if (stringNode.PrefixTypeStr.ToLower() is "byte" or "ushort") {
+                            AddLine($"if ({bytesName}.Length > {stringNode.PrefixTypeStr.ToLower()}.MaxValue) " +
+                                    $"throw new System.InvalidOperationException(" +
+                                    $"$\"{stringNode.GetFullName()} is {{{bytesName}.Length}} bytes, more than its {stringNode.PrefixTypeStr} length can hold\");");
+                        }
+
+                        AddWriter($"{bytesName}.Length", stringNode.PrefixTypeStr, stringNode.PrefixTypeStr);
                         AddLines(
-                            $"var {stringNode.Name}Bytes = {writeStringCall}({stringNode.GetFullName()}).AsSpan();",
-                            $"{stringNode.Name}Bytes.CopyTo(buffer.Slice(offset, {stringNode.Name}Bytes.Length));",
-                            $"offset += {stringNode.Name}Bytes.Length;");
+                            $"{bytesName}.CopyTo(buffer.Slice(offset, {bytesName}.Length));",
+                            $"offset += {bytesName}.Length;");
                     }
 
                     break;
