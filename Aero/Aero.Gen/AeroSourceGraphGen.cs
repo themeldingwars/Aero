@@ -81,7 +81,8 @@ namespace Aero.Gen
             Ref,
             LenTypePrefixed,
             Fixed,
-            ReadToEnd
+            ReadToEnd,
+            Chunked
         }
 
         public Modes  Mode;
@@ -364,6 +365,12 @@ namespace Aero.Gen
                         break;
                     }
 
+                    if (arrayAttrData.Error != null) {
+                        snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.AeroArrayInvalidArgumentError,
+                            field.GetLocation(), fieldName, arrayAttrData.Error));
+                        break;
+                    }
+
                     var arrayNode = new AeroArrayNode
                     {
                         Mode          = ((AeroArrayNode.Modes) (int) arrayAttrData.ArrayMode),
@@ -497,7 +504,7 @@ namespace Aero.Gen
                     if (arrayNode.Mode == AeroArrayNode.Modes.Fixed) {
                         sb.Append($"Len, {arrayNode.Length}");
                     }
-                    else if (arrayNode.Mode == AeroArrayNode.Modes.LenTypePrefixed) {
+                    else if (arrayNode.Mode is AeroArrayNode.Modes.LenTypePrefixed or AeroArrayNode.Modes.Chunked) {
                         sb.Append($"Length prefix type: {arrayNode.PrefixTypeStr}");
                     }
                     else if (arrayNode.Mode == AeroArrayNode.Modes.Ref) {

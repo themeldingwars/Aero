@@ -193,7 +193,8 @@ namespace Aero.Gen
                                 using (Block($"case {shadowFieldIdx}: // {node.GetFullName()}")) {
                                     CreateLogicFlow(node,
                                         CreateUnpackerPreNode,
-                                        node => { CreateUnpackerOnNode(false, node, ref nullableIdx, isEncounterClass); });
+                                        node => { CreateUnpackerOnNode(false, node, ref nullableIdx, isEncounterClass); },
+                                        scopeEnd: CloseChunkedArrayScope);
                                     AddLine("break;");
                                 }
 
@@ -273,14 +274,16 @@ namespace Aero.Gen
                 {
                     CreateLogicFlow(node,
                         (node) => CreatePackerPreNode(node),
-                        (node) => CreatePackerOnNode(node, false, true, fieldIdx));
+                        (node) => CreatePackerOnNode(node, false, true, fieldIdx),
+                        scopeEnd: CloseChunkedArrayScope);
                 }
                 else
                 {
                     AddLine($"buffer[offset++] = {fieldIdx};");
                     CreateLogicFlow(node,
                         (node) => CreatePackerPreNode(node),
-                        (node) => CreatePackerOnNode(node, false));
+                        (node) => CreatePackerOnNode(node, false),
+                        scopeEnd: CloseChunkedArrayScope);
                 }
             }
         }
