@@ -11,6 +11,10 @@ namespace Aero.Gen.Attributes
         public string Key;
         public Type   Typ;
 
+        // Only with typeof(byte): the array is a sequence of chunks, each with its own count byte.
+        // A count of 255 means another chunk follows, so 255 elements are written as FF ... 00
+        public bool Chunked;
+
         public AeroArrayAttribute()
         {
         }

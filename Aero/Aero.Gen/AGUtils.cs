@@ -46,7 +46,8 @@ namespace Aero.Gen
             RefField,
             LengthType,
             FixedSize,
-            NullTerminated
+            NullTerminated,
+            Chunked
         }
 
         public Mode   ArrayMode;
@@ -54,6 +55,7 @@ namespace Aero.Gen
         public string KeyName;
         public int    Length;
         public string KeyType;
+        public string Error;
     }
 
     public struct AeroBlobInfo
@@ -190,9 +192,11 @@ namespace Aero.Gen
             var arrayAttr = NodeWithName<AttributeSyntax>(fd, AeroArrayAttribute.Name);
             if (arrayAttr == null) return new AeroArrayInfo {IsArray = false};
 
-            var numArgs = arrayAttr.ArgumentList?.Arguments.Count ?? 0;
+            var allArgs   = arrayAttr.ArgumentList?.Arguments.ToArray() ?? Array.Empty<AttributeArgumentSyntax>();
+            var args      = allArgs.Where(x => x.NameEquals == null).ToArray();
+            var namedArgs = allArgs.Where(x => x.NameEquals != null).ToArray();
+            var numArgs   = args.Length;
             if (numArgs == 1) {
-                var args = arrayAttr.ArgumentList.Arguments.ToArray();
                 data.IsArray = true;
 
                 if (args[0].Expression is InvocationExpressionSyntax ies && ies.ArgumentList.Arguments.Single().Expression is IdentifierNameSyntax ins) {
@@ -213,6 +217,28 @@ namespace Aero.Gen
                 if (args[0].Expression is TypeOfExpressionSyntax es && es.Type is PredefinedTypeSyntax pdt) {
                     data.ArrayMode = AeroArrayInfo.Mode.LengthType;
                     data.KeyType   = pdt.ToString();
+                }
+            }
+
+            foreach (var namedArg in namedArgs) {
+                var argName = namedArg.NameEquals.Name.Identifier.Text;
+                if (argName == nameof(AeroArrayAttribute.Chunked)) {
+                    if (namedArg.Expression.IsKind(SyntaxKind.FalseLiteralExpression)) {
+                        continue;
+                    }
+
+                    if (!namedArg.Expression.IsKind(SyntaxKind.TrueLiteralExpression)) {
+                        data.Error = "Chunked has to be true or false";
+                    }
+                    else if (data.ArrayMode != AeroArrayInfo.Mode.LengthType || data.KeyType != "byte") {
+                        data.Error = "Chunked is only supported with typeof(byte)";
+                    }
+                    else {
+                        data.ArrayMode = AeroArrayInfo.Mode.Chunked;
+                    }
+                }
+                else {
+                    data.Error = $"'{argName}' isn't a supported AeroArray argument";
                 }
             }
 

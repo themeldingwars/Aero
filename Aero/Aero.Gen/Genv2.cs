@@ -510,7 +510,8 @@ namespace Aero.Gen
                 var nullableIdx = 0;
                 CreateLogicFlow(rootNode,
                     CreateUnpackerPreNode,
-                    node => { CreateUnpackerOnNode(isView, node, ref nullableIdx); });
+                    node => { CreateUnpackerOnNode(isView, node, ref nullableIdx); },
+                    scopeEnd: CloseChunkedArrayScope);
 
                 AddLine("return offset;");
             }
@@ -736,6 +737,10 @@ namespace Aero.Gen
                             AddLine($"offset += ({prefixLen}) + ({arrayNode.GetSize()}); // array fixed {node.Name}");
                         }
                     }
+                    else if (arrayNode.Mode == AeroArrayNode.Modes.Chunked) {
+                        AddLine(
+                            $"offset += ({GetChunkCountSize(arrayNode)}) + ({arrayNode.GetSize()} * {arrayNode.GetFullName()}.Length); // array chunked {node.Name}");
+                    }
                     else {
                         // Otherwise we gotta multiply by length
                         AddLine(
@@ -792,10 +797,18 @@ namespace Aero.Gen
                         AddLine();
                     }
                 }
+                else if (arrayNode.Mode == AeroArrayNode.Modes.Chunked) {
+                    AddLine($"offset += {GetChunkCountSize(arrayNode)};");
+                    AddLine();
+                }
+
                 var idxName = $"idx{arrayNode.Depth}";
                 AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.GetFullName()}.Length; {idxName}++)");
             }
         }
+
+        // One count byte per full chunk of 255 plus the last one, which is 0 when the length is a multiple of 255
+        private static string GetChunkCountSize(AeroArrayNode arrayNode) => $"{arrayNode.GetFullName()}.Length / 255 + 1";
 
         public virtual void CreatePackerV2(ClassDeclarationSyntax cd)
         {
@@ -816,7 +829,8 @@ namespace Aero.Gen
                 var rootNode = AeroSourceGraphGen.BuildTree(SyntaxReceiver, cd);
                 CreateLogicFlow(rootNode,
                     CreatePackerPreNode,
-                    (node) => CreatePackerOnNode(node, node.IsNullable));
+                    (node) => CreatePackerOnNode(node, node.IsNullable),
+                    scopeEnd: CloseChunkedArrayScope);
 
                 AddLine("return offset;");
             }
@@ -1071,6 +1085,40 @@ namespace Aero.Gen
                     AddLine($"for (int {idxName} = 0; {idxName} < {arrayNode.Length}; {idxName}++)");
                     break;
 
+                case AeroArrayNode.Modes.Chunked:
+                    var arrayName = firstSubNode.GetFullName(true);
+                    var chunkName = $"array{firstSubNode.Name}{arrayNode.Depth}Chunk";
+                    var startName = $"array{firstSubNode.Name}{arrayNode.Depth}Start";
+
+                    // The chunk loop is closed in CloseChunkedArrayScope once the element loop is done
+                    if (createArray) {
+                        var grownName = $"array{firstSubNode.Name}{arrayNode.Depth}Grown";
+
+                        AddLine($"{arrayName} = new {firstSubNode.TypeStr}[0];");
+                        LogDiagRead(arrayNode, isArrayDefine: true);
+                        AddLine("while (true)");
+                        StartScope();
+                        AddLines($"var {chunkName} = data[offset];",
+                            "offset += 1;",
+                            $"var {startName} = {arrayName}.Length;",
+                            $"var {grownName} = new {firstSubNode.TypeStr}[{startName} + {chunkName}];",
+                            $"Array.Copy({arrayName}, {grownName}, {startName});",
+                            $"{arrayName} = {grownName};",
+                            "");
+                        AddLine($"for (int {idxName} = {startName}; {idxName} < {arrayName}.Length; {idxName}++)");
+                    }
+                    else {
+                        AddLine($"for (int {startName} = 0; ; {startName} += 255)");
+                        StartScope();
+                        AddLines($"var {chunkName} = Math.Min(255, {arrayName}.Length - {startName});",
+                            $"buffer[offset] = (byte){chunkName};",
+                            "offset += 1;",
+                            "");
+                        AddLine($"for (int {idxName} = {startName}; {idxName} < {startName} + {chunkName}; {idxName}++)");
+                    }
+
+                    break;
+
                 case AeroArrayNode.Modes.ReadToEnd:
                     if (createArray) {
                         AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{-arrayNode.Length}];");
@@ -1087,12 +1135,25 @@ namespace Aero.Gen
             }
         }
 
-        // Boiler plate code for creating the logic flow
-        private void CreateLogicFlow(AeroNode         rootNode,      Action<AeroNode> preNode  = null,
-                                     Action<AeroNode> onNode = null, Action<AeroNode> postNode = null)
+        // Ends the chunk loop that CreateForFromNode opened around the element loop of a chunked array
+        private void CloseChunkedArrayScope(AeroNode scopeOwner)
         {
-            var lastDepth = 0;
-            var idx       = 0;
+            if (scopeOwner is AeroArrayNode {Mode: AeroArrayNode.Modes.Chunked} arrayNode) {
+                var firstSubNode = arrayNode.Nodes.First(x => x is AeroFieldNode or AeroBlockNode or AeroStringNode);
+                AddLine($"if (array{firstSubNode.Name}{arrayNode.Depth}Chunk != 255) break;");
+                EndScope();
+            }
+        }
+
+        // Boiler plate code for creating the logic flow
+        // scopeEnd is called with the node that opened a scope after that scope's closing bracket
+        private void CreateLogicFlow(AeroNode         rootNode,      Action<AeroNode> preNode  = null,
+                                     Action<AeroNode> onNode = null, Action<AeroNode> postNode = null,
+                                     Action<AeroNode> scopeEnd = null)
+        {
+            var lastDepth   = 0;
+            var idx         = 0;
+            var scopeOwners = new Stack<AeroNode>();
             AeroSourceGraphGen.WalkTree(rootNode, node =>
             {
                 if (node.IsRoot) return;
@@ -1100,11 +1161,15 @@ namespace Aero.Gen
                 if (lastDepth > node.Depth) {
                     for (int i = 0; i < lastDepth - node.Depth; i++) {
                         EndScope();
+                        scopeEnd?.Invoke(scopeOwners.Pop());
                         AddLine();
                     }
                 }
 
-                if (lastDepth < node.Depth) StartScope();
+                if (lastDepth < node.Depth) {
+                    StartScope();
+                    scopeOwners.Push(node.Parent);
+                }
 
                 if (node is AeroArrayNode aan) {
                     AddLine($"// Array {aan.Mode}");
@@ -1137,6 +1202,7 @@ namespace Aero.Gen
 
             for (int i = 0; i < lastDepth; i++) {
                 EndScope();
+                scopeEnd?.Invoke(scopeOwners.Pop());
             }
         }
     }
