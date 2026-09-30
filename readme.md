@@ -134,6 +134,10 @@ Strings should be marked with this attribute to be parsed correctly.
 
 Strings are UTF-8, lengths and prefixes count bytes, not characters. A fixed size string is padded with ``0x00`` or cut off to its size when packing.
 
+## ``[AeroBigEndian]``
+Integers are little endian by default, ``[AeroBigEndian]`` reads and writes the field in network byte order instead.
+* Supported on ``short``, ``ushort``, ``int``, ``uint``, ``long``, ``ulong``, enums backed by them and arrays of either (the elements are big endian, an array count stays little endian).
+
 ## ``[AeroSdb]``
 * ``[AeroSdb("Table Name", "Column Name")]``: Mark a field as having a value from the sdb table and column given.
 

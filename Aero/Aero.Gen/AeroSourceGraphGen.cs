@@ -69,6 +69,7 @@ namespace Aero.Gen
         public string EnumStr;
         public bool   IsEnum;
         public bool   IsFlags;
+        public bool   IsBigEndian;
 
         public override bool IsFixedSize() => true;
         public override int  GetSize() => Genv2.GetTypeSize(this.IsEnum ? EnumStr : TypeStr);
@@ -253,6 +254,13 @@ namespace Aero.Gen
                 var typeInfo  = sModel.GetTypeInfo(field.Declaration.Type).Type;
                 var typeStr   = typeInfo?.ToString();
 
+                var isBigEndian = AgUtils.HasNodeWithName<AttributeSyntax>(field, AeroBigEndianAttribute.Name);
+                if (isBigEndian && !IsBigEndianType(typeInfo)) {
+                    snr.Context.ReportDiagnostic(Diagnostic.Create(AeroGenerator.AeroBigEndianInvalidTypeError,
+                        field.GetLocation(), fieldName, typeStr));
+                    break;
+                }
+
                 if (AgUtils.HasNodeWithName<AttributeSyntax>(field, AeroNullable.Name)) {
                     currentNode.IsNullable = true;
                 }
@@ -407,8 +415,11 @@ namespace Aero.Gen
                     };
 
                     foreach (var structField in AgUtils.GetStructFields(aeroBlock)) {
+                        // Null when the field was rejected with a diagnostic
                         var subField = BuildTree(snr, new[] {structField}, aeroBlockNode, state);
-                        aeroBlockNode.Nodes.Add(subField);
+                        if (subField != null) {
+                            aeroBlockNode.Nodes.Add(subField);
+                        }
                     }
 
                     currentNode.Nodes.Add(aeroBlockNode);
@@ -467,6 +478,7 @@ namespace Aero.Gen
                                 elementTypeInfo is INamedTypeSymbol ns ? ns.EnumUnderlyingType?.Name.ToLower() ?? "" : "",
                             IsEnum     = elementTypeInfo?.TypeKind                                                   == TypeKind.Enum,
                             IsFlags    = elementTypeInfo?.GetAttributes().Any(x => x.AttributeClass.Name == "Flags") == true,
+                            IsBigEndian = isBigEndian,
                             Depth      = currentNode.Depth + 1,
                             Index      = state.Idx++,
                             IsNullable = currentNode.IsNullable
@@ -483,7 +495,23 @@ namespace Aero.Gen
                 }
             }
 
-            return parent == null ? rootNode : rootNode.Nodes.First();
+            return parent == null ? rootNode : rootNode.Nodes.FirstOrDefault();
+        }
+
+        // Multi-byte integers, enums backed by them and arrays of either
+        private static bool IsBigEndianType(ITypeSymbol type)
+        {
+            if (type is IArrayTypeSymbol arrayType) {
+                type = arrayType.ElementType;
+            }
+
+            if (type is INamedTypeSymbol {EnumUnderlyingType: { } underlyingType}) {
+                type = underlyingType;
+            }
+
+            return type?.SpecialType is SpecialType.System_Int16 or SpecialType.System_UInt16 or
+                                        SpecialType.System_Int32 or SpecialType.System_UInt32 or
+                                        SpecialType.System_Int64 or SpecialType.System_UInt64;
         }
 
         public static string PrintTree(AeroNode rootNode)
