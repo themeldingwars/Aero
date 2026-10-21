@@ -65,18 +65,42 @@ jobs:
     - name: Test
       run: dotnet test --no-build --verbosity normal -c Release
 
+    # Every push to main publishes, nbgv only counts the commits that touch Aero.Gen, so a commit that only
+    # changes tests, benchmarks or CI keeps the version that already has a tag
+    - name: Check for a new version
+      if: matrix.platform.name == 'Linux' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      id: version
+      run: |
+        dotnet tool install -g nbgv
+        version=$(nbgv get-version -v NuGetPackageVersion)
+        if git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
+          echo "v$version is already released"
+          echo "publish=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "Releasing v$version"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: NuGet Login
-      if: matrix.platform.name == 'Linux' && github.ref == 'refs/heads/main'
+      if: steps.version.outputs.publish == 'true'
       uses: NuGet/login@v1
       id: login
       with:
         user: TMW
     - name: Publish Aero.Gen NuGet
-      if: matrix.platform.name == 'Linux' && github.ref == 'refs/heads/main'
+      if: steps.version.outputs.publish == 'true'
       env:
         NUGET_DIRECTORY: Aero.Gen/bin/Release
         NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
       run: dotnet nuget push "$NUGET_DIRECTORY"/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+    - name: Tag release
+      if: steps.version.outputs.publish == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_REPOSITORY: ${{ github.repository }}
+      run: |
+        nbgv tag
+        git push "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPOSITORY}.git" "v$(nbgv get-version -v NuGetPackageVersion)"
 
     - name: Run benchmarks
       if: matrix.platform.name == 'Linux'
