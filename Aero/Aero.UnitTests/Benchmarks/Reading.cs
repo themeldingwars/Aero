@@ -72,6 +72,19 @@ namespace Aero.UnitTests.Benchmarks
         [AeroArray(20)] public SubType[] TestSubType;
     }
 
+    [AeroBlock]
+    public struct BenchmarkPackedSizeName
+    {
+        [AeroString(typeof(byte))] public string Name;
+    }
+
+    [Aero]
+    public partial class BenchmarkPackedSizeVariableTest
+    {
+        [AeroArray(typeof(byte))] public int[]                     Ids;
+        [AeroArray(typeof(byte))] public BenchmarkPackedSizeName[] Names;
+    }
+
     //[SimpleJob(RuntimeMoniker.NetCoreApp30)]
     [SimpleJob(RuntimeMoniker.Net80, launchCount: 1, warmupCount: 5, iterationCount: 10)]
     [MemoryDiagnoser]
@@ -110,6 +123,19 @@ namespace Aero.UnitTests.Benchmarks
                 new SubType(), new SubType(), new SubType(),
                 new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType(), new SubType(),
                 new SubType(), new SubType(), new SubType()
+            }
+        };
+
+        private BenchmarkPackedSizeVariableTest PackedSizeVariableTestInstance = new BenchmarkPackedSizeVariableTest
+        {
+            Ids   = new[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+            Names = new[]
+            {
+                new BenchmarkPackedSizeName {Name = "Accord"}, new BenchmarkPackedSizeName {Name = "Chosen"},
+                new BenchmarkPackedSizeName {Name = "Bandit"}, new BenchmarkPackedSizeName {Name = "Aranha"},
+                new BenchmarkPackedSizeName {Name = "Melding"}, new BenchmarkPackedSizeName {Name = "Thump"},
+                new BenchmarkPackedSizeName {Name = "Kanaloa"}, new BenchmarkPackedSizeName {Name = "Strike"},
+                new BenchmarkPackedSizeName {Name = "Copacabana"}, new BenchmarkPackedSizeName {Name = "Sertão"}
             }
         };
 
@@ -350,10 +376,11 @@ namespace Aero.UnitTests.Benchmarks
             return Tests.SimpleTypesRef.GetPackedSize();
         }
 
+        // Fixed size fields fold into a constant, so this needs variable length arrays and strings to measure anything
         [Benchmark]
-        public int GetPackedLengthComplex()
+        public int GetPackedLengthVariable()
         {
-            return PackedSizeComplexTestInstance.GetPackedSize();
+            return PackedSizeVariableTestInstance.GetPackedSize();
         }
 
     #region Pack Benchmarks
