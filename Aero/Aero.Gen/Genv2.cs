@@ -515,7 +515,7 @@ namespace Aero.Gen
                 CreateLogicFlow(rootNode,
                     CreateUnpackerPreNode,
                     node => { CreateUnpackerOnNode(isView, node, ref nullableIdx); },
-                    scopeEnd: CloseChunkedArrayScope);
+                    scopeEnd: node => CloseArrayScope(node, true));
 
                 AddLine("return offset;");
             }
@@ -665,6 +665,11 @@ namespace Aero.Gen
             if (node?.Parent is AeroArrayNode arrayNode2 && arrayNode2.Nodes.First().Index == node?.Index && arrayNode2.Mode == AeroArrayNode.Modes.ReadToEnd) {
                 var idxName = $"idx{arrayNode2.Depth}";
                 AddLine($"{idxName}++;");
+            }
+
+            if (node?.Parent is AeroArrayNode {Mode: AeroArrayNode.Modes.ReadToEnd} growingArray &&
+                growingArray.Nodes.First().Index == node.Index) {
+                GrowArrayForElement(growingArray);
             }
 
             if (node is AeroBlockNode) {
@@ -856,7 +861,7 @@ namespace Aero.Gen
                 CreateLogicFlow(rootNode,
                     CreatePackerPreNode,
                     (node) => CreatePackerOnNode(node, node.IsNullable),
-                    scopeEnd: CloseChunkedArrayScope);
+                    scopeEnd: node => CloseArrayScope(node, false));
 
                 AddLine("return offset;");
             }
@@ -1138,7 +1143,7 @@ namespace Aero.Gen
                     var chunkName = $"array{firstSubNode.Name}{arrayNode.Depth}Chunk";
                     var startName = $"array{firstSubNode.Name}{arrayNode.Depth}Start";
 
-                    // The chunk loop is closed in CloseChunkedArrayScope once the element loop is done
+                    // The chunk loop is closed in CloseArrayScope once the element loop is done
                     if (createArray) {
                         var grownName = $"array{firstSubNode.Name}{arrayNode.Depth}Grown";
 
@@ -1172,6 +1177,7 @@ namespace Aero.Gen
                     if (createArray) {
                         AddLine($"{firstSubNode.GetFullName(true)} = new {firstSubNode.TypeStr}[{-arrayNode.Length}];");
                         AddLine($"var {idxName} = -1;");
+                        AddLine($"var array{firstSubNode.Name}{arrayNode.Depth}ElementStart = -1;");
                         LogDiagRead(arrayNode, isArrayDefine: true);
                         AddLine("while (offset < data.Length)");
                     }
@@ -1184,14 +1190,46 @@ namespace Aero.Gen
             }
         }
 
-        // Ends the chunk loop that CreateForFromNode opened around the element loop of a chunked array
-        private void CloseChunkedArrayScope(AeroNode scopeOwner)
+        // Ends the loop that CreateForFromNode opened around the elements of a chunked or read to end array
+        private void CloseArrayScope(AeroNode scopeOwner, bool isReading)
         {
-            if (scopeOwner is AeroArrayNode {Mode: AeroArrayNode.Modes.Chunked} arrayNode) {
-                var firstSubNode = arrayNode.Nodes.First(x => x is AeroFieldNode or AeroBlockNode or AeroStringNode);
+            if (scopeOwner is not AeroArrayNode arrayNode) {
+                return;
+            }
+
+            var firstSubNode = arrayNode.Nodes.FirstOrDefault(x => x is AeroFieldNode or AeroBlockNode or AeroStringNode);
+            if (arrayNode.Mode == AeroArrayNode.Modes.ReadToEnd && isReading) {
+                // Cut off the unused space so the array holds what was read, like the other modes
+                var arrayName   = firstSubNode.GetFullName(true);
+                var countName   = $"idx{arrayNode.Depth} + 1";
+                var trimmedName = $"array{firstSubNode.Name}{arrayNode.Depth}Trimmed";
+                AddLines($"var {trimmedName} = new {firstSubNode.TypeStr}[{countName}];",
+                    $"Array.Copy({arrayName}, {trimmedName}, {countName});",
+                    $"{arrayName} = {trimmedName};");
+            }
+            else if (arrayNode.Mode == AeroArrayNode.Modes.Chunked) {
                 AddLine($"if (array{firstSubNode.Name}{arrayNode.Depth}Chunk != 255) break;");
                 EndScope();
             }
+        }
+
+        // Grows the array of a read to end array at the start of each element, the count isn't known up front
+        private void GrowArrayForElement(AeroArrayNode arrayNode)
+        {
+            var firstSubNode = arrayNode.Nodes.First(x => x is AeroFieldNode or AeroBlockNode or AeroStringNode);
+            var arrayName    = firstSubNode.GetFullName(true);
+            var grownName    = $"array{firstSubNode.Name}{arrayNode.Depth}Grown";
+            var startName    = $"array{firstSubNode.Name}{arrayNode.Depth}ElementStart";
+
+            // The loop only ends once the elements used up the data, an element that reads nothing would never get there
+            AddLines($"if (offset == {startName}) throw new System.IO.InvalidDataException($\"{arrayName} has an element that reads no bytes\");",
+                $"{startName} = offset;");
+            AddLine($"if (idx{arrayNode.Depth} == {arrayName}.Length)");
+            StartScope();
+            AddLines($"var {grownName} = new {firstSubNode.TypeStr}[Math.Max(4, {arrayName}.Length * 2)];",
+                $"Array.Copy({arrayName}, {grownName}, {arrayName}.Length);",
+                $"{arrayName} = {grownName};");
+            EndScope();
         }
 
         // Boiler plate code for creating the logic flow

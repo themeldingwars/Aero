@@ -84,7 +84,7 @@ Marks a field as an array, there are a few variants of this.
     * This is how the Firefall client reads every byte-counted array. It's only supported with ``typeof(byte)``.
 * ``AeroArray(int -length)`` : eg ``[AeroArray(-4)]`` If the fixed size is negative then the array will be crated with that number positive but will keep reading untill the end of the data is reached
   * eg. ``[AeroArray(-4)] public int Test;`` will create an array of ints with a size of 4 and do a ``while(!hasReachedTheEnd)`` for reading
-  * The size given as the arg should be the max size that the array can have, it won't be resized
+  * The size given as the arg is the initial size, the array grows when more elements follow and is cut to the number of elements read at the end, so packing writes back what was read
   * There will be a ``Get[ArrayName]Count`` getter added that has the number of items that were read for this array.
 
 ## ``[AeroBlob]``
